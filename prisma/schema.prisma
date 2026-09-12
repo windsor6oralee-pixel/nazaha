@@ -1,0 +1,837 @@
+// ============================================================
+// Nazaha Employment Platform — Prisma Schema v2
+// Database: PostgreSQL (Docker in all environments)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")          // runtime role: nazaha_app (subject to RLS)
+  directUrl = env("DIRECT_DATABASE_URL")   // migrations only: table owner / superuser
+}
+
+// ============================================================
+// PLATFORM ADMIN
+// Operates the SaaS itself (creates tenants). Deliberately a
+// separate table with NO organizationId: it can never be
+// confused with a tenant user, and RLS never applies to it.
+// ============================================================
+
+model PlatformAdmin {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  nameAr       String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_admins")
+}
+
+// ============================================================
+// ORGANIZATION
+// Root of multi-tenancy. Each government entity = one org.
+// Deactivation via isActive, not deletion.
+// ============================================================
+
+model Organization {
+  id       String  @id @default(cuid())
+  nameAr   String
+  nameEn   String?
+  slug     String  @unique
+  logoPath String?
+  isActive Boolean @default(true)
+
+  // Branding & legal identity (per-tenant; surfaces in HR portal, contracts, and emails)
+  type                  OrgType @default(GOVERNMENT)
+  officialNameAr        String?   // full legal name used in contracts
+  authorizedSignerName  String?   // official who signs on behalf of the org
+  authorizedSignerTitle String?
+  commercialRegNo       String?   // private sector
+  address               String?
+  contactEmail          String?
+  contactPhone          String?
+  primaryColor          String?   // hex; tints the HR portal header only
+
+  users             User[]
+  roles             Role[]
+  candidates        Candidate[]
+  applications      Application[]
+  workflows         Workflow[]
+  settings          SystemSetting[]
+  contractTemplates ContractTemplate[]
+  contracts         Contract[]
+  candidateFields   CandidateFieldDefinition[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organizations")
+}
+
+enum OrgType {
+  GOVERNMENT
+  SEMI_GOVERNMENT
+  PRIVATE
+}
+
+// ============================================================
+// CUSTOM CANDIDATE FIELDS (per-tenant, constrained EAV)
+// Five value types only — enough for filtering and reports,
+// small enough to stay manageable. Values are stored as
+// canonical strings (ISO date, "true"/"false", numeric text).
+// ============================================================
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  BOOLEAN
+}
+
+model CandidateFieldDefinition {
+  id              String    @id @default(cuid())
+  key             String    // snake_case; exposed to templates as {{custom.<key>}}
+  labelAr         String
+  type            FieldType
+  options         String[]  // SELECT only
+  isRequired      Boolean   @default(false)
+  showToCandidate Boolean   @default(false)
+  order           Int       @default(0)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  values CandidateFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId, order])
+  @@map("candidate_field_definitions")
+}
+
+model CandidateFieldValue {
+  candidateId  String
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  definitionId String
+  definition   CandidateFieldDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  value        String
+
+  updatedAt DateTime @updatedAt
+
+  @@id([candidateId, definitionId])
+  @@map("candidate_field_values")
+}
+
+// ============================================================
+// USER (HR staff & admins — NOT candidates)
+// ============================================================
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  nameAr       String
+  nameEn       String?
+  phone        String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  documentReviews DocumentReview[]
+  signatures      Signature[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ============================================================
+// ROLE & PERMISSIONS (RBAC)
+// Predefined roles: hr_officer, hr_manager, admin
+// (candidate_portal uses VerificationToken, not this table)
+// ============================================================
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String
+  nameAr      String
+  isSystem    Boolean          @default(false)  // admin / hr_manager / hr_officer — cannot be deleted
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@unique([organizationId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id       String           @id @default(cuid())
+  resource String
+  action   String
+  roles    RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================
+// CANDIDATE
+// The person being onboarded.
+// Auth is via VerificationToken (magic link) — no password here.
+// A candidate can have applications at multiple organizations.
+// organizationId here = the org that first created this record.
+// ============================================================
+
+model Candidate {
+  id                String    @id @default(cuid())
+  nationalId        String
+  nameAr            String
+  nameEn            String?
+  email             String
+  phone             String?
+  jobTitle          String
+  department        String
+  acceptanceDate    DateTime
+  expectedStartDate DateTime?
+
+  // The org that created/invited this candidate
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  // Token-based auth is in VerificationToken table
+  lastAccessAt DateTime?
+
+  applications       Application[]
+  verificationTokens VerificationToken[]
+  signatures         Signature[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  customValues       CandidateFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One national ID per org (person can exist in multiple orgs)
+  @@unique([organizationId, nationalId])
+  @@map("candidates")
+}
+
+// ============================================================
+// VERIFICATION TOKEN (Magic Link)
+// Separate table so Candidate model stays clean.
+// Raw token is NEVER stored — only its SHA-256 hash.
+// One token per candidate per purpose at a time.
+// ============================================================
+
+model VerificationToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique  // SHA-256 of the actual token sent via email
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+  purpose     TokenPurpose @default(LOGIN)
+  expiresAt   DateTime
+  usedAt      DateTime?  // null = not yet used
+
+  createdAt DateTime @default(now())
+
+  @@map("verification_tokens")
+}
+
+enum TokenPurpose {
+  LOGIN
+  EMAIL_CHANGE
+  ACCOUNT_ACTIVATION
+}
+
+// ============================================================
+// APPLICATION
+// One application per candidate per organization (enforced
+// at the service layer, not DB — allows future multi-app).
+// organizationId here for direct multi-tenancy queries.
+// ============================================================
+
+model Application {
+  id     String            @id @default(cuid())
+  status ApplicationStatus @default(PENDING)
+
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  // Denormalized for query efficiency (avoids JOIN to candidate)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
+
+  onboardingProcess  OnboardingProcess?
+  documents          Document[]
+  contracts          Contract[]
+  auditLogs          AuditLog[]
+  preboardingChannel PreboardingChannel?
+
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // No DB-level unique on candidateId —
+  // business rule (one active application per org) enforced in service layer
+  @@index([candidateId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  PENDING
+  IN_PROGRESS
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  WITHDRAWN
+}
+
+// ============================================================
+// ONBOARDING PROCESS & STEPS (instances)
+// completionPercentage is NEVER stored.
+// Always computed:
+//   COUNT(steps WHERE status=COMPLETED AND isRequired=true)
+//   ÷ COUNT(steps WHERE isRequired=true) × 100
+// ============================================================
+
+model OnboardingProcess {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  steps OnboardingStep[]
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@map("onboarding_processes")
+}
+
+model OnboardingStep {
+  id     String     @id @default(cuid())
+  status StepStatus @default(PENDING)
+  notes  String?
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  onboardingProcessId String
+  onboardingProcess   OnboardingProcess @relation(fields: [onboardingProcessId], references: [id])
+
+  workflowStepId String
+  workflowStep   WorkflowStep @relation(fields: [workflowStepId], references: [id])
+
+  @@map("onboarding_steps")
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  BLOCKED
+}
+
+// ============================================================
+// WORKFLOW TEMPLATE
+// Defines the ordered steps an org requires for onboarding.
+// Multiple workflows per org; one marked isDefault.
+// ============================================================
+
+model Workflow {
+  id          String  @id @default(cuid())
+  nameAr      String
+  nameEn      String?
+  description String?
+  isDefault   Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  steps        WorkflowStep[]
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  order       Int
+  nameAr      String
+  nameEn      String?
+  description String?
+  type        StepType
+  isRequired  Boolean  @default(true)
+  canSkip     Boolean  @default(false)
+
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
+
+  // Document rules are in WorkflowStepDocument, not an enum array
+  documentRequirements WorkflowStepDocument[]
+  onboardingSteps      OnboardingStep[]
+
+  @@map("workflow_steps")
+}
+
+// ============================================================
+// WORKFLOW STEP DOCUMENT
+// Defines per-step document rules.
+// Replaces the flat DocumentType[] array on WorkflowStep.
+// Each row = one document type required in this step,
+// with its own rules (size, format, cardinality, review).
+// ============================================================
+
+model WorkflowStepDocument {
+  id             String       @id @default(cuid())
+  documentType   DocumentType
+  nameAr         String
+  isRequired     Boolean      @default(true)
+  maxFileSizeMb  Int          @default(5)
+  allowedMimeTypes String[]   // e.g. ["application/pdf","image/jpeg","image/png"]
+  maxFileCount   Int          @default(1)
+  requiresReview Boolean      @default(true)
+  notes          String?      // instructions shown to candidate
+
+  workflowStepId String
+  workflowStep   WorkflowStep @relation(fields: [workflowStepId], references: [id])
+
+  // One document type per step (prevents duplicates within same step)
+  @@unique([workflowStepId, documentType])
+  @@map("workflow_step_documents")
+}
+
+enum StepType {
+  PERSONAL_DATA
+  DOCUMENTS
+  DOCUMENT_REVIEW
+  CONTRACT
+  SIGNATURE
+  BACKGROUND_CHECK
+  MEDICAL
+  IT_SETUP
+  ORIENTATION
+  CUSTOM
+}
+
+// ============================================================
+// DOCUMENT (instance per application)
+// One row per expected document per application.
+// Rows created when application is initialized from workflow.
+// filePath is RELATIVE to storage root — backend is abstracted.
+// checksum (SHA-256) for file integrity verification.
+// ============================================================
+
+model Document {
+  id         String         @id @default(cuid())
+  type       DocumentType
+  nameAr     String
+  isRequired Boolean        @default(true)
+  status     DocumentStatus @default(NOT_UPLOADED)
+
+  filePath   String?  // "orgs/{orgId}/apps/{appId}/{docType}.pdf"
+  fileName   String?
+  fileSize   Int?     // bytes
+  mimeType   String?
+  checksum   String?  // SHA-256 hex — verified on download
+
+  uploadedAt DateTime?
+  expiresAt  DateTime?
+
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  reviews DocumentReview[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("documents")
+}
+
+enum DocumentType {
+  NATIONAL_ID
+  ACADEMIC_CERTIFICATE
+  EXPERIENCE_CERTIFICATE
+  CRIMINAL_RECORD
+  PERSONAL_PHOTO
+  BANK_ACCOUNT_IBAN
+  MEDICAL_REPORT
+  MARRIAGE_CERTIFICATE
+  BIRTH_CERTIFICATE
+  MILITARY_STATUS
+  CUSTOM
+}
+
+enum DocumentStatus {
+  NOT_UPLOADED
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// ============================================================
+// DOCUMENT REVIEW
+// Full history: uploaded → rejected → re-uploaded → approved.
+// reason is required when decision = REJECTED.
+// ============================================================
+
+model DocumentReview {
+  id       String         @id @default(cuid())
+  decision ReviewDecision
+  reason   String?
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  reviewerId String
+  reviewer   User   @relation(fields: [reviewerId], references: [id])
+
+  reviewedAt DateTime @default(now())
+
+  @@map("document_reviews")
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+}
+
+// ============================================================
+// CONTRACT
+// Generated per application, one per type.
+// filePath is relative to storage root (same abstraction as Document).
+// ============================================================
+
+// ============================================================
+// CONTRACT TEMPLATE (per-tenant, versioned)
+// bodyHtml holds {{placeholders}} rendered at contract generation.
+// Editing creates a new version; old contracts keep their frozen copy.
+// ============================================================
+
+model ContractTemplate {
+  id       String       @id @default(cuid())
+  type     ContractType
+  nameAr   String
+  bodyHtml String
+  version  Int          @default(1)
+  isActive Boolean      @default(true)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, type, version])
+  @@index([organizationId, type, isActive])
+  @@map("contract_templates")
+}
+
+model Contract {
+  id     String         @id @default(cuid())
+  type   ContractType
+  nameAr String
+  status ContractStatus @default(DRAFT)
+
+  templatePath  String?
+  generatedPath String?
+
+  // Frozen at generation: what the candidate saw is exactly what was signed.
+  renderedHtml String?
+  contentHash  String?   // SHA-256 of renderedHtml — recorded on each signature
+
+  templateId String?
+  template   ContractTemplate? @relation(fields: [templateId], references: [id])
+
+  // Denormalized for tenant isolation and reporting
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+
+  signatures  Signature[]
+
+  generatedAt DateTime?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contracts")
+}
+
+enum ContractType {
+  EMPLOYMENT_CONTRACT
+  CONFIDENTIALITY_AGREEMENT
+  IT_POLICY_ACKNOWLEDGEMENT
+  CONFLICT_OF_INTEREST
+  CUSTOM
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  PARTIALLY_SIGNED
+  FULLY_SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+// ============================================================
+// SIGNATURE
+// Explicit FK for both candidateId and userId.
+// Exactly one must be non-null (enforced at service layer).
+// No polymorphic signerId String — type safety over brevity.
+// ============================================================
+
+model Signature {
+  id            String          @id @default(cuid())
+  signerType    SignerType
+  method        SignatureMethod  @default(DRAWN)
+  signatureData String?
+  contentHash   String?   // hash of the contract content at the moment of signing
+  ipAddress     String?
+  userAgent     String?
+  signedAt      DateTime        @default(now())
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id])
+
+  // Exactly one of these is non-null
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@map("signatures")
+}
+
+enum SignerType {
+  CANDIDATE
+  HR_OFFICER
+  HR_MANAGER
+}
+
+enum SignatureMethod {
+  DRAWN
+  TYPED
+  UPLOADED_IMAGE
+  EXTERNAL_PROVIDER
+}
+
+// ============================================================
+// NOTIFICATION
+// candidateId XOR userId — exactly one is set.
+// Channels start with IN_APP; EMAIL/SMS added via adapters.
+// ============================================================
+
+model Notification {
+  id      String              @id @default(cuid())
+  type    NotificationType
+  titleAr String
+  bodyAr  String
+  channel NotificationChannel @default(IN_APP)
+  isRead  Boolean             @default(false)
+  readAt  DateTime?
+  sentAt  DateTime?
+
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  WELCOME
+  DOCUMENT_UPLOADED
+  DOCUMENT_APPROVED
+  DOCUMENT_REJECTED
+  STEP_COMPLETED
+  ACTION_REQUIRED
+  CONTRACT_READY
+  CONTRACT_SIGNED
+  APPLICATION_APPROVED
+  APPLICATION_REJECTED
+  REMINDER
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+// ============================================================
+// AUDIT LOG (append-only, never deleted)
+// actorType distinguishes USER / CANDIDATE / SYSTEM actions.
+// action format: "resource.event" e.g. "document.uploaded"
+// metadata stores contextual data (before/after, reason, etc.)
+// Indexes on most common query patterns.
+// ============================================================
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  actorType ActorType
+  action    String
+  resource  String
+  resourceId String?
+
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([candidateId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum ActorType {
+  USER
+  CANDIDATE
+  SYSTEM
+}
+
+// ============================================================
+// SYSTEM SETTING (per-organization key-value config)
+// Examples: max_document_size_mb, welcome_message,
+//           reminder_interval_days, allowed_domains
+// ============================================================
+
+model SystemSetting {
+  id          String  @id @default(cuid())
+  key         String
+  value       String
+  description String?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@map("system_settings")
+}
+
+// ============================================================
+// PREBOARDING HUB
+// Controlled communication channel for Step 5 (الاستعداد للمباشرة).
+// HR initiates by default; bidirectional can be enabled per-channel.
+// ============================================================
+
+model PreboardingChannel {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  bidirectional Boolean  @default(false)
+
+  application Application @relation(fields: [applicationId], references: [id])
+  messages    PreboardingMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("preboarding_channels")
+}
+
+model PreboardingMessage {
+  id         String              @id @default(cuid())
+  channelId  String
+  senderType PreboardingSender
+  senderId   String
+  type       PreboardingMsgType
+  content    String?
+  filePath   String?
+  fileName   String?
+  isRead     Boolean             @default(false)
+
+  channel PreboardingChannel @relation(fields: [channelId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([channelId, createdAt])
+  @@map("preboarding_messages")
+}
+
+enum PreboardingSender {
+  HR
+  CANDIDATE
+}
+
+enum PreboardingMsgType {
+  TEXT
+  FILE
+  PING
+  PING_RESPONSE
+  FILE_REQUEST
+}
