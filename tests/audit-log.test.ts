@@ -8,6 +8,8 @@ import { listAuditLogs, diffFields, encodeCursor, decodeCursor } from "@/infrast
 let orgId: string;
 let userId: string;
 const probeIds: string[] = [];
+// Unique per run: the table is append-only, so earlier runs' probe rows are still there.
+const PAGE_ACTION = `test.pagination_probe.${Date.now()}`;
 
 beforeAll(async () => {
   const org = await prisma.organization.findFirstOrThrow({ where: { slug: "mof" } });
@@ -57,7 +59,7 @@ describe("cursor pagination", () => {
   it("pages without overlap or gaps and terminates", async () => {
     // Guarantee enough rows to need several pages.
     for (let i = 0; i < 7; i++) {
-      const r = await prisma.auditLog.create({ data: { actorType: "SYSTEM", action: "test.pagination_probe", resource: "Test", userId } });
+      const r = await prisma.auditLog.create({ data: { actorType: "SYSTEM", action: PAGE_ACTION, resource: "Test", userId } });
       probeIds.push(r.id);
     }
     const db = tenantPrisma(orgId);
@@ -65,7 +67,7 @@ describe("cursor pagination", () => {
     let cursor: string | null = null;
     let pages = 0;
     do {
-      const page = await listAuditLogs(db, { action: "test.pagination_probe" }, cursor, 3);
+      const page = await listAuditLogs(db, { action: PAGE_ACTION }, cursor, 3);
       for (const e of page.entries) {
         expect(seen.has(e.id), "duplicate row across pages").toBe(false);
         seen.add(e.id);
@@ -88,9 +90,9 @@ describe("cursor pagination", () => {
 describe("filters", () => {
   it("intersect (action + actorType + user)", async () => {
     const db = tenantPrisma(orgId);
-    const page = await listAuditLogs(db, { action: "test.pagination_probe", actorType: "SYSTEM", userId }, null, 50);
+    const page = await listAuditLogs(db, { action: PAGE_ACTION, actorType: "SYSTEM", userId }, null, 50);
     expect(page.entries.length).toBe(7);
-    const none = await listAuditLogs(db, { action: "test.pagination_probe", actorType: "CANDIDATE" }, null, 50);
+    const none = await listAuditLogs(db, { action: PAGE_ACTION, actorType: "CANDIDATE" }, null, 50);
     expect(none.entries).toEqual([]);
   });
 
