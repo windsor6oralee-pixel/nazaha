@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { requireHR } from "@/infrastructure/tenant";
+import { prisma } from "@/infrastructure/database/client";
+import { diffFields } from "@/infrastructure/audit/audit.service";
 import {
   getOrganizationProfile,
   updateOrganizationProfile,
@@ -7,6 +10,10 @@ import {
 } from "@/infrastructure/services/organization.service";
 
 const ADMIN_ROLES = ["admin", "hr_manager"];
+const AUDITED_FIELDS = [
+  "nameAr", "nameEn", "type", "officialNameAr", "authorizedSignerName", "authorizedSignerTitle",
+  "commercialRegNo", "address", "contactEmail", "contactPhone", "primaryColor",
+] as const;
 const ORG_TYPES = new Set(["GOVERNMENT", "SEMI_GOVERNMENT", "PRIVATE"]);
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -64,6 +71,24 @@ export async function PATCH(req: Request) {
   const parsed = parse(body);
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 422 });
 
+  const before = await getOrganizationProfile(ctx.organizationId);
   const profile = await updateOrganizationProfile(ctx.organizationId, parsed.data);
+
+  const changes = before
+    ? diffFields(before as unknown as Record<string, unknown>, parsed.data as Record<string, unknown>, AUDITED_FIELDS)
+    : {};
+  if (Object.keys(changes).length > 0) {
+    await prisma.auditLog.create({
+      data: {
+        actorType: "USER",
+        userId: ctx.userId,
+        action: "organization.updated",
+        resource: "Organization",
+        resourceId: ctx.organizationId,
+        metadata: { changes } as unknown as Prisma.InputJsonObject,
+      },
+    });
+  }
+
   return NextResponse.json(profile);
 }

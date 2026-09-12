@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Mail, FileSignature, ListChecks, ChevronLeft } from "lucide-react";
+import { Building2, Mail, FileSignature, ListChecks, ScrollText, ChevronLeft } from "lucide-react";
 import { getTenantContext } from "@/infrastructure/tenant";
 import { getOrganizationProfile } from "@/infrastructure/services/organization.service";
 import { getSmtpConfig } from "@/infrastructure/notifications/smtp-config.service";
@@ -18,6 +18,14 @@ export default async function AdminHubPage() {
   const activeTemplates = templates.filter((t) => t.isActive).length;
 
   const cards = [
+    {
+      href: "/admin/audit",
+      icon: ScrollText,
+      title: "سجل التدقيق",
+      desc: "من فعل ماذا ومتى — للقراءة فقط",
+      status: "محمي من التعديل",
+      ok: true,
+    },
     {
       href: "/admin/candidate-fields",
       icon: ListChecks,
