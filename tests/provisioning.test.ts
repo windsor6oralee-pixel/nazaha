@@ -10,7 +10,8 @@ const STAMP = Date.now();
 const created: string[] = [];
 
 async function removeTenant(organizationId: string) {
-  await prisma.auditLog.deleteMany({ where: { resourceId: organizationId } });
+  // audit_logs is append-only (no DELETE for the runtime role); its rows only carry
+  // the org id as plain text, so they never block deleting the tenant itself.
   await prisma.user.deleteMany({ where: { organizationId } });
   await prisma.contractTemplate.deleteMany({ where: { organizationId } });
   await prisma.workflowStepDocument.deleteMany({ where: { workflowStep: { workflow: { organizationId } } } });
