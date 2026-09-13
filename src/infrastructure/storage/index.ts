@@ -5,6 +5,7 @@
  */
 import type { StorageProvider } from "./storage.interface";
 import { LocalAdapter } from "./local.adapter";
+import { DatabaseAdapter } from "./database.adapter";
 
 let _instance: StorageProvider | null = null;
 
@@ -19,14 +20,10 @@ export function getStorage(): StorageProvider {
       _instance = new LocalAdapter(localPath);
       break;
 
-    // case "s3":
-    //   _instance = new S3Adapter({
-    //     endpoint: process.env.STORAGE_S3_ENDPOINT!,
-    //     bucket: process.env.STORAGE_S3_BUCKET!,
-    //     accessKey: process.env.STORAGE_S3_ACCESS_KEY!,
-    //     secretKey: process.env.STORAGE_S3_SECRET_KEY!,
-    //   });
-    //   break;
+    // Stateless hosts (Vercel): bytes live in PostgreSQL next to their metadata.
+    case "database":
+      _instance = new DatabaseAdapter();
+      break;
 
     default:
       throw new Error(`Unknown STORAGE_PROVIDER: "${provider}"`);

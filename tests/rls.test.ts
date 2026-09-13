@@ -32,7 +32,7 @@ describe("runtime database role", () => {
       SELECT relname, relrowsecurity, relforcerowsecurity
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND relkind = 'r'
-        AND relname NOT IN ('_prisma_migrations', 'platform_admins', 'permissions', 'role_permissions')`;
+        AND relname NOT IN ('_prisma_migrations', 'platform_admins', 'permissions', 'role_permissions', 'stored_files')`;
     const unprotected = rows.filter((r) => !r.relrowsecurity || !r.relforcerowsecurity).map((r) => r.relname);
     expect(unprotected).toEqual([]);
   });

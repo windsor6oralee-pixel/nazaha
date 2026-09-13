@@ -35,6 +35,25 @@ model PlatformAdmin {
 }
 
 // ============================================================
+// STORED FILE (STORAGE_PROVIDER=database)
+// Binary content lives next to its metadata so uploads survive
+// stateless hosts and ride along in the same transaction/backup.
+// Keys are opaque and only ever looked up AFTER the owning
+// document/organization row has been authorized through RLS,
+// so this table itself is global (no organizationId).
+// ============================================================
+
+model StoredFile {
+  key       String   @id
+  data      Bytes
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@map("stored_files")
+}
+
+// ============================================================
 // ORGANIZATION
 // Root of multi-tenancy. Each government entity = one org.
 // Deactivation via isActive, not deletion.
