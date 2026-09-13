@@ -5,6 +5,9 @@
 set -euo pipefail
 : "${DIRECT_DATABASE_URL:?set DIRECT_DATABASE_URL (owner connection)}"
 : "${APP_DB_PASSWORD:?set APP_DB_PASSWORD}"
+# Prisma connection strings carry "?schema=public", which psql rejects as an invalid URI
+# parameter (exit 2). Strip it; the role change is schema-independent anyway.
+psql_url="$(printf '%s' "$DIRECT_DATABASE_URL" | sed -E 's/([?&])schema=[^&]*&?/\1/; s/[?&]$//')"
 printf "ALTER ROLE nazaha_app WITH PASSWORD '%s';\n" "${APP_DB_PASSWORD//\'/\'\'}" \
-  | psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -q
+  | psql "$psql_url" -v ON_ERROR_STOP=1 -q
 echo "nazaha_app password updated"
