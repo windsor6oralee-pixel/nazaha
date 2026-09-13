@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
+import { OnlineBadge } from "@/components/hr/OnlineBadge";
 
 interface NavbarProps {
   type: "candidate" | "hr";
@@ -123,6 +124,7 @@ export function Navbar({ type, userName, orgName, orgLogoUrl, headerColor, showA
 
           {/* User info + sign out */}
           <div className="flex items-center gap-3">
+            {type === "hr" && <OnlineBadge />}
             {userName && (
               <div className="hidden sm:flex items-center gap-2">
                 <div

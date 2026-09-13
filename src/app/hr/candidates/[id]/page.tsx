@@ -6,6 +6,7 @@ import { HRContractSection } from "@/components/hr/HRContractSection";
 import { HRPreboardingPanel } from "@/components/hr/HRPreboardingPanel";
 import { ProgressTracker } from "@/components/candidate/ProgressTracker";
 import { InvitationCodeCard } from "@/components/hr/InvitationCodeCard";
+import { SendAlertButton } from "@/components/hr/SendAlertButton";
 import { getLatestInvitation } from "@/infrastructure/services/invitation.service";
 import {
   getCandidateById,
@@ -78,6 +79,7 @@ export default async function CandidateDetailPage({ params }: Props) {
             <Badge style={getStatusStyle(candidate.status)}>
               {getStatusLabel(candidate.status)}
             </Badge>
+            <SendAlertButton candidateId={candidate.id} />
           </div>
         </div>
 

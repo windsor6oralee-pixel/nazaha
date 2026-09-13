@@ -177,10 +177,11 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  documentReviews DocumentReview[]
-  signatures      Signature[]
-  notifications   Notification[]
-  auditLogs       AuditLog[]
+  documentReviews  DocumentReview[]
+  signatures       Signature[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  sentAlerts       CandidateAlert[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -328,6 +329,7 @@ model Application {
   contracts          Contract[]
   auditLogs          AuditLog[]
   preboardingChannel PreboardingChannel?
+  candidateAlerts    CandidateAlert[]
 
   hrWelcomeNote String?   // optional personalised message written by HR, shown as a banner to the candidate
 
@@ -753,6 +755,30 @@ enum NotificationChannel {
 // AUDIT LOG (append-only, never deleted)
 // actorType distinguishes USER / CANDIDATE / SYSTEM actions.
 // action format: "resource.event" e.g. "document.uploaded"
+// ============================================================
+// CANDIDATE ALERTS (HR → Candidate urgent messages)
+// NORMAL: shown as a banner. HIGH: blocking modal + audio.
+// acknowledgedAt is set when the candidate taps "فهمت".
+// ============================================================
+
+model CandidateAlert {
+  id             String    @id @default(cuid())
+  organizationId String
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  sentByUserId   String
+  sentBy         User      @relation(fields: [sentByUserId], references: [id])
+  titleAr        String
+  bodyAr         String
+  priority       String    @default("NORMAL") // "NORMAL" | "HIGH"
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([applicationId])
+  @@index([organizationId])
+  @@map("candidate_alerts")
+}
+
 // metadata stores contextual data (before/after, reason, etc.)
 // Indexes on most common query patterns.
 // ============================================================
