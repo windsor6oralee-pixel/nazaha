@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { prisma } from "@/infrastructure/database/client";
 import { verifyHRCredentials, verifyPlatformCredentials } from "@/infrastructure/auth/credentials.service";
 
@@ -16,11 +16,15 @@ beforeAll(async () => {
   hrUserId = u.id;
 });
 
-afterEach(async () => {
-  // Reset counters after each test so tests are independent.
+async function resetLockoutCounters() {
   await prisma.user.update({ where: { id: hrUserId }, data: { failedLoginAttempts: 0, lockedUntil: null } });
   await prisma.platformAdmin.updateMany({ where: { email: PLATFORM_EMAIL }, data: { failedLoginAttempts: 0, lockedUntil: null } });
-});
+}
+
+// Reset before each test too: other files (e.g. account-lifecycle) log in with wrong passwords for
+// the same seeded accounts and leave counters behind. Reset after so later files start clean.
+beforeEach(resetLockoutCounters);
+afterEach(resetLockoutCounters);
 
 afterAll(() => prisma.$disconnect());
 
