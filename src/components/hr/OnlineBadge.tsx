@@ -30,9 +30,13 @@ export function OnlineBadge() {
   }
 
   useEffect(() => {
-    poll();
+    // Defer the first poll so no state update runs synchronously in the effect.
+    const initial = setTimeout(poll, 0);
     const id = setInterval(poll, POLL_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, []);
 
   // Close popover on outside click

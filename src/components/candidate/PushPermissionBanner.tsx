@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Bell, X } from "lucide-react";
 
-export function PushPermissionBanner() {
-  const [show, setShow] = useState(false);
+const noopSubscribe = () => () => {};
 
-  useEffect(() => {
-    if (!("Notification" in window)) return;
-    if (Notification.permission !== "default") return;
-    const dismissed = (() => {
-      try { return !!localStorage.getItem("push-banner-dismissed"); } catch { return false; }
-    })();
-    if (!dismissed) setShow(true);
-  }, []);
+function shouldShowBanner() {
+  if (typeof window === "undefined") return false;
+  if (!("Notification" in window)) return false;
+  if (Notification.permission !== "default") return false;
+  try { return !localStorage.getItem("push-banner-dismissed"); } catch { return false; }
+}
+
+export function PushPermissionBanner() {
+  const [show, setShow] = useState(shouldShowBanner);
+  // False during SSR and hydration, true afterwards — keeps server and client markup identical.
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   function dismiss() {
     try { localStorage.setItem("push-banner-dismissed", "1"); } catch {}
@@ -27,7 +29,7 @@ export function PushPermissionBanner() {
     dismiss();
   }
 
-  if (!show) return null;
+  if (!hydrated || !show) return null;
 
   return (
     <div

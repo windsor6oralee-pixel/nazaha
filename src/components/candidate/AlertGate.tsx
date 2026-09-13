@@ -35,8 +35,8 @@ function playTone() {
 
 export function AlertGate() {
   const [queue, setQueue] = useState<Alert[]>([]);
-  const [current, setCurrent] = useState<Alert | null>(null);
   const [isAcking, setIsAcking] = useState(false);
+  const current = queue[0] ?? null;
   const tonesPlayed = useRef<Set<string>>(new Set());
 
   const poll = useCallback(async () => {
@@ -51,24 +51,22 @@ export function AlertGate() {
   }, []);
 
   useEffect(() => {
-    poll();
+    // Defer the first poll so no state update runs synchronously in the effect.
+    const initial = setTimeout(poll, 0);
     const id = setInterval(poll, POLL_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, [poll]);
 
-  // Pick the top alert to show
+  // Play the tone once per HIGH alert when it reaches the top of the queue
   useEffect(() => {
-    if (queue.length === 0) {
-      setCurrent(null);
-      return;
-    }
-    const top = queue[0];
-    setCurrent(top);
-    if (top.priority === "HIGH" && !tonesPlayed.current.has(top.id)) {
-      tonesPlayed.current.add(top.id);
+    if (current?.priority === "HIGH" && !tonesPlayed.current.has(current.id)) {
+      tonesPlayed.current.add(current.id);
       playTone();
     }
-  }, [queue]);
+  }, [current]);
 
   async function acknowledge(alertId: string) {
     setIsAcking(true);
