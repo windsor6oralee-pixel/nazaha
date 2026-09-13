@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { PreboardingMsgType } from "@prisma/client";
 import { requireAuth, tenantPrisma, deny, type TenantContext, type TenantPrisma } from "@/infrastructure/tenant";
+
+const MESSAGE_TYPES = new Set<PreboardingMsgType>(["TEXT", "FILE", "PING", "PING_RESPONSE", "FILE_REQUEST"]);
 
 type Params = { params: Promise<{ applicationId: string }> };
 
@@ -61,7 +64,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     filePath?: string;
   };
 
-  if (!type) return NextResponse.json({ error: "نوع الرسالة مطلوب" }, { status: 400 });
+  if (!type || !MESSAGE_TYPES.has(type as PreboardingMsgType)) {
+    return NextResponse.json({ error: "نوع الرسالة غير صالح" }, { status: 400 });
+  }
+  const messageType = type as PreboardingMsgType;
 
   const isCandidate = ctx.kind === "candidate";
 
@@ -84,7 +90,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       channelId: channel.id,
       senderType: isCandidate ? "CANDIDATE" : "HR",
       senderId: isCandidate ? ctx.candidateId : ctx.userId,
-      type: type as any,
+      type: messageType,
       content: content ?? null,
       fileName: fileName ?? null,
       filePath: filePath ?? null,

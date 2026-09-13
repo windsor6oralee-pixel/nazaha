@@ -151,7 +151,7 @@ export function CandidateFieldsManager({ fields }: Props) {
           <div className="p-10 text-center">
             <ListChecks className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--color-text-muted)" }} />
             <p className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>لا توجد حقول مخصصة بعد</p>
-            <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>أضف حقولاً مثل "الرقم الوظيفي" أو "الفرع" لتظهر في نموذج المرشح والعقود</p>
+            <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>أضف حقولاً مثل «الرقم الوظيفي» أو «الفرع» لتظهر في نموذج المرشح والعقود</p>
           </div>
         ) : (
           <ul className="divide-y" style={{ borderColor: "var(--color-border)" }}>

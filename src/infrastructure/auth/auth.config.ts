@@ -37,11 +37,11 @@ export const authConfig: NextAuthConfig = {
       // On first sign-in, merge the user object into the token
       if (user) {
         token.id = user.id;
-        token.nameAr = (user as any).nameAr;
-        token.role = (user as any).role;
-        token.sessionType = (user as any).sessionType;
-        token.organizationId = (user as any).organizationId;
-        token.applicationId = (user as any).applicationId;
+        token.nameAr = user.nameAr;
+        token.role = user.role;
+        token.sessionType = user.sessionType;
+        token.organizationId = user.organizationId;
+        token.applicationId = user.applicationId;
       }
       return token;
     },

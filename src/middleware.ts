@@ -62,7 +62,7 @@ export default auth((req) => {
     if (user.sessionType !== "hr_user") {
       return Response.redirect(new URL("/auth/login", origin));
     }
-    const role = (user as any).role ?? "";
+    const role = user.role ?? "";
     if (!["admin", "hr_manager"].includes(role)) {
       return Response.redirect(new URL("/hr", origin));
     }

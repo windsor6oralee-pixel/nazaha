@@ -1,5 +1,6 @@
 import type { NotificationProvider } from "./notification.interface";
 import { ConsoleAdapter } from "./console.adapter";
+import { SmtpAdapter } from "./smtp.adapter";
 
 let _instance: NotificationProvider | null = null;
 
@@ -10,7 +11,6 @@ export function getNotifier(): NotificationProvider {
   const provider = process.env.NOTIFICATION_PROVIDER ?? "console";
 
   if (provider === "smtp") {
-    const { SmtpAdapter } = require("./smtp.adapter") as typeof import("./smtp.adapter");
     _instance = new SmtpAdapter({
       host:   process.env.SMTP_HOST!,
       port:   Number(process.env.SMTP_PORT ?? 587),

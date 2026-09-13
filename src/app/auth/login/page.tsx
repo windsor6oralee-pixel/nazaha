@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Shield, Loader2 } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
 
-export default function HRLoginPage() {
+function HRLoginPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/hr";
@@ -216,5 +216,14 @@ export default function HRLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() opts the page out of static prerendering only inside a Suspense boundary.
+export default function HRLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <HRLoginPageInner />
+    </Suspense>
   );
 }

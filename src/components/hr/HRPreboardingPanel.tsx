@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import {
   Send, Bell, FolderOpen, ToggleLeft, ToggleRight,
-  Loader2, FileText, CheckCircle, MessageSquare, Clock,
+  Loader2, MessageSquare,
 } from "lucide-react";
 
 interface Message {
@@ -25,27 +25,32 @@ export function HRPreboardingPanel({ applicationId, candidateName }: HRPreboardi
   const firstName = candidateName.split(" ")[0];
   const [messages, setMessages] = useState<Message[]>([]);
   const [bidirectional, setBidirectional] = useState(false);
-  const [channelExists, setChannelExists] = useState(false);
   const [text, setText] = useState("");
   const [isPending, startTransition] = useTransition();
   const [togglingBidi, setTogglingBidi] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  async function fetchMessages() {
-    const res = await fetch(`/api/preboarding/${applicationId}/messages`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setMessages(data.messages ?? []);
-    setChannelExists(!!data.channel);
-    if (data.channel) setBidirectional(data.channel.bidirectional);
-  }
+  // Bumped to force a reload (e.g. right after sending); the effect owns all fetching.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
-    fetchMessages();
-    pollRef.current = setInterval(fetchMessages, 5000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [applicationId]);
+    let cancelled = false;
+    const load = async () => {
+      const res = await fetch(`/api/preboarding/${applicationId}/messages`);
+      if (!res.ok || cancelled) return;
+      const data = await res.json();
+      if (cancelled) return;
+      setMessages(data.messages ?? []);
+      if (data.channel) setBidirectional(data.channel.bidirectional);
+    };
+    load();
+    pollRef.current = setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [applicationId, refreshTick]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,7 +64,7 @@ export function HRPreboardingPanel({ applicationId, candidateName }: HRPreboardi
         body: JSON.stringify({ type, content: content ?? text }),
       });
       setText("");
-      await fetchMessages();
+      setRefreshTick((t) => t + 1);
     });
   }
 

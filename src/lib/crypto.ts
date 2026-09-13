@@ -3,6 +3,7 @@
  * Key comes from ENCRYPTION_KEY env var (64 hex chars = 32 bytes).
  * Falls back to a dev-only key when not set (never safe for production).
  */
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 const DEV_KEY = "0".repeat(64); // 32 zero-bytes — dev only
 
@@ -15,17 +16,15 @@ function getKey(): Buffer {
 }
 
 export function encrypt(plaintext: string): string {
-  const { createCipheriv, randomBytes } = require("crypto") as typeof import("crypto");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", getKey(), iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  // Format: iv(12):tag(16):ciphertext — base64 encoded, colon-separated
+  // Format: iv(12):tag(16):ciphertext — hex encoded, colon-separated
   return [iv.toString("hex"), tag.toString("hex"), encrypted.toString("hex")].join(":");
 }
 
 export function decrypt(encoded: string): string {
-  const { createDecipheriv } = require("crypto") as typeof import("crypto");
   const [ivHex, tagHex, ctHex] = encoded.split(":");
   const decipher = createDecipheriv("aes-256-gcm", getKey(), Buffer.from(ivHex, "hex"));
   decipher.setAuthTag(Buffer.from(tagHex, "hex"));

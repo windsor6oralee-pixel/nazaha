@@ -113,7 +113,11 @@ export function AuditLogViewer({ initial, query, options, actionLabels, resource
     });
   }
   function toggle(id: string) {
-    setOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setOpen((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
   }
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>

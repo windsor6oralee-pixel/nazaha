@@ -89,7 +89,7 @@ export async function POST(
     const proc = contract.application.onboardingProcess;
     if (proc) {
       for (const step of proc.steps) {
-        const order = (step as any).workflowStep?.order;
+        const order = step.workflowStep?.order;
         if (order === 3) {
           await tx.onboardingStep.update({ where: { id: step.id }, data: { status: "COMPLETED" } });
         }

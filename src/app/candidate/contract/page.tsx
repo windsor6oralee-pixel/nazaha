@@ -13,13 +13,8 @@ export default async function ContractPage() {
   const applicationId = session?.user?.applicationId;
   if (!applicationId) redirect("/candidate");
 
-  // Fetch contract and document stats in parallel
-  const [contract, docStats, candidate] = await Promise.all([
+  const [contract, candidate] = await Promise.all([
     getContractForApplication(applicationId),
-    prisma.document.aggregate({
-      where: { applicationId },
-      _count: { _all: true },
-    }),
     prisma.application.findUnique({
       where: { id: applicationId },
       select: {

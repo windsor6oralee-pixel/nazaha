@@ -63,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role.name,
           sessionType: "hr_user",
           organizationId: user.organizationId,
-        } as any;
+        };
       },
     }),
 
@@ -134,7 +134,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           sessionType: "candidate",
           organizationId: candidate.organizationId,
           applicationId: application?.id,
-        } as any;
+        };
       },
     }),
 
@@ -181,7 +181,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: "platform_admin",
           sessionType: "platform_admin",
           organizationId: "",
-        } as any;
+        };
       },
     }),
   ],

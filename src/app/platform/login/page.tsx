@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, ServerCog, Loader2, ShieldAlert } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
 
-export default function PlatformLoginPage() {
+function PlatformLoginPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/platform";
@@ -75,5 +75,14 @@ export default function PlatformLoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() opts the page out of static prerendering only inside a Suspense boundary.
+export default function PlatformLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <PlatformLoginPageInner />
+    </Suspense>
   );
 }

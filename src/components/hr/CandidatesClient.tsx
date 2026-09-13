@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { CandidateRow } from "@/components/hr/CandidateRow";
-import { cn } from "@/lib/utils";
 import type { Candidate, ApplicationStatus } from "@/types";
 
 const filterOptions: { label: string; value: ApplicationStatus | "all" }[] = [

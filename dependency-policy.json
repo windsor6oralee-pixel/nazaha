@@ -1,0 +1,20 @@
+{
+  "$comment": "Zero Unjustified Dependencies. Every runtime dependency must be listed here with its justification. scripts/ci/check-deps.mjs fails CI when package.json drifts from this file.",
+  "runtime": {
+    "@prisma/client": "Database access layer; the only ORM.",
+    "next": "Application framework (routing, SSR, API routes).",
+    "react": "UI runtime required by Next.js.",
+    "react-dom": "UI runtime required by Next.js.",
+    "next-auth": "Session and credential authentication (JWT strategy, no adapter).",
+    "bcryptjs": "Password hashing for HR and platform-admin accounts; pure JS, no native build.",
+    "nodemailer": "SMTP delivery for invitations and notifications using each tenant's own server.",
+    "lucide-react": "Icon set shipped as local SVG components; no network requests.",
+    "clsx": "Conditional class composition inside cn().",
+    "tailwind-merge": "Conflict-safe Tailwind class merging inside cn(); a naive join is not conflict-safe."
+  },
+  "forbiddenPatterns": [
+    "aws-sdk", "@aws-sdk/", "firebase", "supabase", "@supabase/", "@sentry/", "analytics",
+    "openai", "@anthropic-ai/", "langchain", "stripe", "twilio", "@sendgrid/", "mailgun",
+    "axios", "lodash", "moment", "chart.js", "recharts", "apexcharts"
+  ]
+}

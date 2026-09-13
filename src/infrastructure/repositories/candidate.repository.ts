@@ -39,7 +39,7 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
     include: candidateInclude,
   });
   if (!db) return null;
-  return mapCandidate(db as any);
+  return mapCandidate(db);
 }
 
 /**
@@ -60,7 +60,7 @@ export async function getCandidateByApplicationId(
     include: candidateInclude,
   });
   if (!db) return null;
-  return mapCandidate(db as any, applicationId);
+  return mapCandidate(db, applicationId);
 }
 
 /**
@@ -75,7 +75,7 @@ export async function getCandidatesByOrganization(
     include: candidateInclude,
     orderBy: { createdAt: "desc" },
   });
-  return dbs.map((db) => mapCandidate(db as any));
+  return dbs.map((db) => mapCandidate(db));
 }
 
 /**

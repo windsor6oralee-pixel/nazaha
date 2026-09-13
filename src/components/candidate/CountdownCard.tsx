@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 
 interface CountdownCardProps {
@@ -9,7 +10,8 @@ interface CountdownCardProps {
 }
 
 export function CountdownCard({ firstName, startDate, acceptanceDate }: CountdownCardProps) {
-  const now = Date.now();
+  // Captured once per mount so render stays pure (and SSR/CSR agree within the request).
+  const [now] = useState(() => Date.now());
   const start = new Date(startDate).getTime();
   const accepted = new Date(acceptanceDate).getTime();
 

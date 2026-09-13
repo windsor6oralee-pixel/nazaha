@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
@@ -31,7 +32,7 @@ const errorMessages: Record<string, { title: string; body: string; action: strin
   },
 };
 
-export default function AuthErrorPage() {
+function AuthErrorPageInner() {
   const searchParams = useSearchParams();
   const errorCode = searchParams.get("error") ?? "Default";
   const info = errorMessages[errorCode] ?? errorMessages.Default;
@@ -78,5 +79,14 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() opts the page out of static prerendering only inside a Suspense boundary.
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthErrorPageInner />
+    </Suspense>
   );
 }

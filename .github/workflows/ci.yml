@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: policy · migrations · types · lint · tests · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nazaha
+          POSTGRES_PASSWORD: ci-owner-password
+          POSTGRES_DB: nazaha_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nazaha -d nazaha_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Owner connection: migrations, role management, drift check.
+      DIRECT_DATABASE_URL: postgresql://nazaha:ci-owner-password@localhost:5432/nazaha_db?schema=public
+      # Runtime connection: everything the app and tests do, subject to RLS.
+      DATABASE_URL: postgresql://nazaha_app:ci-app-password@localhost:5432/nazaha_db?schema=public
+      APP_DB_PASSWORD: ci-app-password
+      # Throwaway values — never real secrets. CI has no external services to talk to.
+      AUTH_SECRET: ci-only-auth-secret-not-for-production
+      NEXTAUTH_URL: http://localhost:3000
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      NOTIFICATION_PROVIDER: console
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: ./storage
+      SEED_DEV_HR_PASSWORD: ci-seed-password
+      SEED_DEV_PLATFORM_PASSWORD: ci-seed-platform-password
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (locked)
+        run: npm ci
+
+      - name: Run all gates
+        run: bash scripts/ci/test.sh
