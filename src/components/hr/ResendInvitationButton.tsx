@@ -6,40 +6,42 @@ import { Send, CheckCircle, XCircle, Loader2 } from "lucide-react";
 interface Props {
   candidateId: string;
   candidateEmail: string;
+  /** Called after a successful resend (the invitation code has been rotated). */
+  onSent?: () => void;
 }
 
-export function ResendInvitationButton({ candidateId, candidateEmail }: Props) {
+/**
+ * Secondary action: e-mails a fresh invitation. The code itself is always visible in
+ * InvitationCodeCard, so this is a convenience channel, not the only way to deliver it.
+ */
+export function ResendInvitationButton({ candidateId, candidateEmail, onSent }: Props) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [devToken, setDevToken] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
   function handleResend() {
-    if (!confirm(`سيتم إرسال رمز دعوة جديد إلى ${candidateEmail}. هل أنت متأكد؟`)) return;
+    if (!confirm(`سيُولَّد رمز دعوة جديد ويُرسل إلى ${candidateEmail}، ويتوقف الرمز الحالي عن العمل. هل أنت متأكد؟`)) return;
 
     setStatus("idle");
     setMessage(null);
-    setDevToken(null);
 
     start(async () => {
-      const res = await fetch(`/api/candidates/${candidateId}/resend-invitation`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/candidates/${candidateId}/resend-invitation`, { method: "POST" });
       const json = await res.json();
 
       if (!res.ok) {
         setStatus("error");
         setMessage(json.error ?? "فشل الإرسال");
-      } else {
-        setStatus("success");
-        setMessage(`تم إرسال رمز الدعوة إلى ${json.email}`);
-        if (json.devToken) setDevToken(json.devToken);
+        return;
       }
+      setStatus("success");
+      setMessage(`أُرسل رمز جديد إلى ${json.email}`);
+      onSent?.();
     });
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex items-center gap-3 flex-wrap">
       <button
         onClick={handleResend}
         disabled={isPending}
@@ -56,30 +58,22 @@ export function ResendInvitationButton({ candidateId, candidateEmail }: Props) {
       >
         {isPending
           ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الإرسال...</>
-          : <><Send className="w-4 h-4" /> إعادة إرسال الدعوة</>}
+          : <><Send className="w-4 h-4" /> إعادة الإرسال عبر البريد</>}
       </button>
 
       {status === "success" && (
-        <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg"
+        <span className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
           style={{ background: "var(--color-success-bg)", color: "var(--color-success)" }}>
-          <CheckCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p>{message}</p>
-            {devToken && (
-              <p className="mt-1 font-mono tracking-wider" style={{ color: "var(--color-primary-dark)" }}>
-                [dev] {devToken}
-              </p>
-            )}
-          </div>
-        </div>
+          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          {message}
+        </span>
       )}
-
       {status === "error" && (
-        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+        <span className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
           style={{ background: "var(--color-error-bg)", color: "var(--color-error)" }}>
           <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
           {message}
-        </div>
+        </span>
       )}
     </div>
   );

@@ -19,14 +19,17 @@ export function NazahaLogo({ variant = "dark", size = "md" }: NazahaLogoProps) {
 
   return (
     <div className="flex items-center gap-2.5" dir="rtl">
-      <Image
-        src="/nazaha-logo.png"
-        alt="شعار نزاهة التوظيف"
-        width={s.logo}
-        height={s.logo}
-        priority
-        style={{ objectFit: "contain", flexShrink: 0 }}
-      />
+      {/* On dark surfaces the mark's own greens vanish into the background; the plate restores contrast. */}
+      <span className={isLight ? "logo-plate logo-plate-sm" : "inline-flex"} style={{ flexShrink: 0 }}>
+        <Image
+          src="/nazaha-logo.png"
+          alt="شعار نزاهة التوظيف"
+          width={s.logo}
+          height={s.logo}
+          priority
+          style={{ objectFit: "contain", flexShrink: 0, display: "block" }}
+        />
+      </span>
       <div>
         <p className={`font-bold leading-tight ${s.title} text-heading`}
           style={{ color: titleColor }}>

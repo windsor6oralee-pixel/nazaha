@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   User,
   Mail,
@@ -15,8 +14,12 @@ import {
   Loader2,
   Send,
   ListChecks,
+  KeyRound,
+  ArrowLeft,
 } from "lucide-react";
+import Link from "next/link";
 import type { FieldDefinition } from "@/infrastructure/custom-fields/field.service";
+import { CopyButton } from "@/components/hr/CopyButton";
 
 interface Props {
   fields: FieldDefinition[];
@@ -44,7 +47,7 @@ const INITIAL: FormState = {
   expectedStartDate: "",
 };
 
-type Status = { type: "success"; token?: string; email: string } | { type: "error"; message: string } | null;
+type Status = { type: "success"; token?: string; email: string; candidateId: string } | { type: "error"; message: string } | null;
 
 const inputBase =
   "w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all";
@@ -92,7 +95,6 @@ export function CreateCandidateForm({ fields }: Props) {
   );
   const [status, setStatus] = useState<Status>(null);
   const [isPending, start] = useTransition();
-  const router = useRouter();
 
   function set(field: keyof FormState) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -129,43 +131,74 @@ export function CreateCandidateForm({ fields }: Props) {
         return;
       }
 
+      // Stay here: the invitation code must remain visible until HR chooses to leave.
       setStatus({
         type: "success",
         email: json.email,
         token: json.rawToken,
+        candidateId: json.candidateId,
       });
-
-      // Redirect after short delay
-      setTimeout(() => router.push(`/hr/candidates/${json.candidateId}`), 2000);
     });
   }
 
   if (status?.type === "success") {
     return (
-      <div className="max-w-lg mx-auto text-center py-16">
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{ background: "var(--color-success-bg)" }}
-        >
-          <CheckCircle className="w-8 h-8" style={{ color: "var(--color-success)" }} />
-        </div>
-        <h2 className="text-xl font-bold mb-2" style={{ color: "var(--color-dark)" }}>
-          تم إنشاء المرشح بنجاح
-        </h2>
-        <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>
-          تم إرسال رمز الدعوة إلى <strong>{status.email}</strong>
-        </p>
-        {status.token && (
+      <div className="max-w-lg mx-auto py-12" dir="rtl">
+        <div className="text-center">
           <div
-            className="inline-block px-4 py-2 rounded-xl text-sm font-mono tracking-wider mb-4"
-            style={{ background: "var(--color-primary)", color: "var(--color-gold)" }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: "var(--color-success-bg)" }}
           >
-            [dev] {status.token}
+            <CheckCircle className="w-8 h-8" style={{ color: "var(--color-success)" }} />
+          </div>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "var(--color-dark)" }}>
+            تم إنشاء المرشح بنجاح
+          </h2>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            أُرسل رمز الدعوة إلى <strong dir="ltr">{status.email}</strong>، ويمكنك أيضاً نسخه من هنا وإرساله بأي وسيلة.
+          </p>
+        </div>
+
+        {status.token && (
+          <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: "var(--color-gold)", background: "var(--color-gold-muted)" }}>
+            <div className="flex items-center gap-2 mb-3 text-sm font-semibold" style={{ color: "var(--color-primary-dark)" }}>
+              <KeyRound className="w-4 h-4" style={{ color: "var(--color-gold-dark)" }} />
+              رمز الدعوة
+            </div>
+            <div className="flex items-stretch gap-3 flex-wrap">
+              <code
+                dir="ltr"
+                className="flex-1 min-w-[220px] px-4 py-3 rounded-xl border bg-white text-sm font-mono tracking-wider break-all select-all"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-primary-dark)" }}
+              >
+                {status.token}
+              </code>
+              <CopyButton value={status.token} label="نسخ الرمز" className="self-center" />
+            </div>
+            <p className="text-xs mt-3" style={{ color: "var(--color-text-muted)" }}>
+              يبقى الرمز ظاهراً بشكل دائم في ملف المرشح مع زر النسخ، حتى بعد مغادرة هذه الصفحة.
+            </p>
           </div>
         )}
-        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-          جارٍ الانتقال لملف المرشح...
-        </p>
+
+        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+          <Link
+            href={`/hr/candidates/${status.candidateId}`}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: "var(--color-primary)", color: "#fff", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}
+          >
+            الانتقال إلى ملف المرشح
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setStatus(null); setForm(INITIAL); }}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium border"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-primary)", background: "#fff", cursor: "pointer", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}
+          >
+            إضافة مرشح آخر
+          </button>
+        </div>
       </div>
     );
   }

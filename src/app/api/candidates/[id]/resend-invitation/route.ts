@@ -16,8 +16,7 @@ export async function POST(_req: Request, { params }: Params) {
 
   try {
     const result = await sendInvitation(id);
-    const devToken = process.env.NODE_ENV !== "production" ? result.rawToken : undefined;
-    return NextResponse.json({ success: true, email: result.email, devToken });
+    return NextResponse.json({ success: true, email: result.email });
   } catch (err: unknown) {
     console.error("[resend-invitation]", err);
     return NextResponse.json(

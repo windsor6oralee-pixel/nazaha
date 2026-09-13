@@ -4,8 +4,14 @@
     {
       "name": "nazaha-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3001"],
-      "port": 3001,
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3003"
+      ],
+      "port": 3003,
       "autoPort": false
     }
   ]

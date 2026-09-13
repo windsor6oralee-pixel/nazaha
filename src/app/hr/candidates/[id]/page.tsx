@@ -5,7 +5,8 @@ import { HRDocumentCard } from "@/components/hr/HRDocumentCard";
 import { HRContractSection } from "@/components/hr/HRContractSection";
 import { HRPreboardingPanel } from "@/components/hr/HRPreboardingPanel";
 import { ProgressTracker } from "@/components/candidate/ProgressTracker";
-import { ResendInvitationButton } from "@/components/hr/ResendInvitationButton";
+import { InvitationCodeCard } from "@/components/hr/InvitationCodeCard";
+import { getLatestInvitation } from "@/infrastructure/services/invitation.service";
 import {
   getCandidateById,
   getContractForApplication,
@@ -39,7 +40,11 @@ export default async function CandidateDetailPage({ params }: Props) {
   if (!candidate) return notFound();
 
   const applicationId = appRow?.id ?? "";
-  const contract = applicationId ? await getContractForApplication(orgId, applicationId) : null;
+  // Candidate already authorized above (tenant-scoped); the invitation lookup is by candidate id.
+  const [contract, invitation] = await Promise.all([
+    applicationId ? getContractForApplication(orgId, applicationId) : Promise.resolve(null),
+    getLatestInvitation(candidate.id),
+  ]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -73,10 +78,6 @@ export default async function CandidateDetailPage({ params }: Props) {
             <Badge style={getStatusStyle(candidate.status)}>
               {getStatusLabel(candidate.status)}
             </Badge>
-            <ResendInvitationButton
-              candidateId={candidate.id}
-              candidateEmail={candidate.email}
-            />
           </div>
         </div>
 
@@ -108,6 +109,18 @@ export default async function CandidateDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <InvitationCodeCard
+        candidateId={candidate.id}
+        candidateEmail={candidate.email}
+        invitation={invitation ? {
+          code: invitation.code,
+          status: invitation.status,
+          createdAt: invitation.createdAt.toISOString(),
+          expiresAt: invitation.expiresAt.toISOString(),
+          usedAt: invitation.usedAt?.toISOString() ?? null,
+        } : null}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Progress */}

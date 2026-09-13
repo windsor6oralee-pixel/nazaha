@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ArrowLeft, Loader2, CheckCircle, FileText, Zap } from "lucide-react";
 import Image from "next/image";
+import { BentoShowcase } from "@/components/landing/BentoShowcase";
 
 const features = [
   { icon: FileText, text: "تتبع مستنداتك لحظة بلحظة" },
@@ -43,7 +44,8 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex" dir="rtl">
+    <div dir="rtl">
+    <div className="min-h-screen flex">
 
       {/* ── Right panel — brand + tagline ── */}
       <div
@@ -63,14 +65,16 @@ export default function HomePage() {
 
         {/* Logo */}
         <div className="flex items-center gap-4 z-10">
-          <Image
-            src="/nazaha-logo.png"
-            alt="شعار نزاهة التوظيف"
-            width={144}
-            height={144}
-            priority
-            style={{ objectFit: "contain" }}
-          />
+          <div className="logo-plate">
+            <Image
+              src="/nazaha-logo.png"
+              alt="شعار نزاهة التوظيف"
+              width={120}
+              height={120}
+              priority
+              style={{ objectFit: "contain", display: "block" }}
+            />
+          </div>
           <div>
             <p className="font-bold text-2xl leading-tight text-white text-heading">نزاهة التوظيف</p>
             <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}>Nazaha Employment</p>
@@ -235,8 +239,17 @@ export default function HomePage() {
             </div>
           </div>
 
+          <a href="#platform" className="scroll-hint mt-6 mx-auto flex flex-col items-center gap-1 text-xs"
+            style={{ color: "var(--color-text-muted)", minHeight: 0, minWidth: 0 }}>
+            تعرّف على المنصة
+            <span className="scroll-hint-arrow" aria-hidden>↓</span>
+          </a>
+
         </div>
       </div>
+    </div>
+
+    <BentoShowcase />
     </div>
   );
 }

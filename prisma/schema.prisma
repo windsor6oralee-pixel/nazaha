@@ -276,6 +276,9 @@ model Candidate {
 model VerificationToken {
   id          String    @id @default(cuid())
   tokenHash   String    @unique  // SHA-256 of the actual token sent via email
+  // AES-256-GCM copy of the raw token (ENCRYPTION_KEY) so HR can re-read the active
+  // invitation code from the candidate profile. Never used for verification.
+  tokenCiphertext String?
   candidateId String
   candidate   Candidate @relation(fields: [candidateId], references: [id])
   purpose     TokenPurpose @default(LOGIN)

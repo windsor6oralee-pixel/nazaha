@@ -4,6 +4,7 @@
  */
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/infrastructure/database/client";
+import { encrypt, decrypt } from "@/lib/crypto";
 import { getOrgNotifier } from "@/infrastructure/notifications";
 import { candidateInvitation } from "@/infrastructure/notifications/templates/invitation";
 
@@ -53,7 +54,7 @@ export async function sendInvitation(candidateId: string): Promise<InvitationRes
   });
 
   await prisma.verificationToken.create({
-    data: { tokenHash, candidateId, expiresAt },
+    data: { tokenHash, candidateId, expiresAt, tokenCiphertext: encrypt(rawToken) },
   });
 
   // Build email
@@ -73,4 +74,35 @@ export async function sendInvitation(candidateId: string): Promise<InvitationRes
   await notifier.send({ to: candidate.email, subject, html });
 
   return { sent: true, rawToken, email: candidate.email };
+}
+
+export type InvitationStatus = "active" | "used" | "expired";
+
+export interface InvitationCode {
+  code: string | null;   // null when the row predates encrypted storage
+  status: InvitationStatus;
+  createdAt: Date;
+  expiresAt: Date;
+  usedAt: Date | null;
+}
+
+/**
+ * The most recent invitation for a candidate, decrypted for display in the HR
+ * profile. Callers must already have authorized access to the candidate row
+ * (tenant-scoped lookup); this helper deliberately does not re-check tenancy.
+ */
+export async function getLatestInvitation(candidateId: string): Promise<InvitationCode | null> {
+  const row = await prisma.verificationToken.findFirst({
+    where: { candidateId, purpose: "LOGIN" },
+    orderBy: { createdAt: "desc" },
+    select: { tokenCiphertext: true, createdAt: true, expiresAt: true, usedAt: true },
+  });
+  if (!row) return null;
+
+  const status: InvitationStatus = row.usedAt ? "used" : row.expiresAt < new Date() ? "expired" : "active";
+  let code: string | null = null;
+  if (row.tokenCiphertext) {
+    try { code = decrypt(row.tokenCiphertext); } catch { code = null; } // key rotated → unreadable, not fatal
+  }
+  return { code, status, createdAt: row.createdAt, expiresAt: row.expiresAt, usedAt: row.usedAt };
 }
