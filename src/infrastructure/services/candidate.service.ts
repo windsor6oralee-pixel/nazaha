@@ -15,6 +15,7 @@ export interface CreateCandidateInput {
   department: string;
   acceptanceDate: Date;
   expectedStartDate?: Date;
+  hrWelcomeNote?: string;
   organizationId: string;
   createdByUserId: string;
   customValues?: { definitionId: string; value: string }[];
@@ -87,6 +88,7 @@ export async function createCandidate(
         candidateId: candidate.id,
         organizationId: input.organizationId,
         workflowId: workflow.id,
+        ...(input.hrWelcomeNote ? { hrWelcomeNote: input.hrWelcomeNote.trim() } : {}),
       },
     });
 

@@ -129,6 +129,7 @@ export function mapCandidate(
     startDate: db.expectedStartDate?.toISOString().split("T")[0],
     status: (appStatusMap[app?.status ?? "PENDING"] ?? "pending") as ApplicationStatus,
     completionPercentage: computeCompletion(steps),
+    hrWelcomeNote: app?.hrWelcomeNote ?? null,
     steps,
     documents,
   };

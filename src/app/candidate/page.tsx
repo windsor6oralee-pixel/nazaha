@@ -7,6 +7,7 @@ import { SignedContractCard } from "@/components/candidate/SignedContractCard";
 import { WelcomeMessage } from "@/components/candidate/WelcomeMessage";
 import { PreboardingHub } from "@/components/candidate/PreboardingHub";
 import { CountdownCard } from "@/components/candidate/CountdownCard";
+import { OnboardingComplete } from "@/components/candidate/OnboardingComplete";
 import { getTenantContext } from "@/infrastructure/tenant";
 import {
   getCandidateByApplicationId,
@@ -37,53 +38,120 @@ export default async function CandidateDashboard() {
   );
   const requiredDocs = candidate.documents.filter((d) => d.required);
   const optionalDocs = candidate.documents.filter((d) => !d.required);
+  const isComplete = candidate.completionPercentage === 100;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-      {/* Welcome Banner */}
-      <div className="relative rounded-2xl p-6 mb-4 overflow-hidden"
-        style={{ background: "var(--color-primary)" }}>
-        <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-32 -translate-y-32" />
-        <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full translate-x-16 translate-y-16"
-          style={{ background: "var(--color-gold)", opacity: 0.1 }} />
-        <div className="relative">
-          <p className="text-sm mb-1" style={{ color: "#A8D5B8" }}>مرحباً بك في نزاهة التوظيف</p>
-          <h1 className="text-2xl font-bold mb-1 text-white">{candidate.name}</h1>
-          <p className="text-sm" style={{ color: "#C8E8D4" }}>
-            {candidate.jobTitle} · {candidate.department}
-          </p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8" dir="rtl">
 
-          <div className="flex flex-wrap gap-4 mt-4">
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-              <Calendar className="w-3.5 h-3.5" />
-              تاريخ القبول: {formatDate(candidate.acceptanceDate)}
-            </div>
-            {candidate.startDate && (
+      {/* Onboarding complete celebration */}
+      {isComplete && (
+        <OnboardingComplete
+          candidateName={candidate.name}
+          jobTitle={candidate.jobTitle}
+          organization={org.nameAr}
+        />
+      )}
+
+      {/* Welcome Banner */}
+      {!isComplete && (
+        <div className="relative rounded-2xl p-5 sm:p-6 mb-4 overflow-hidden"
+          style={{ background: "var(--color-primary)" }}>
+          <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-32 -translate-y-32" />
+          <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full translate-x-16 translate-y-16"
+            style={{ background: "var(--color-gold)", opacity: 0.1 }} />
+          <div className="relative">
+            <p className="text-xs sm:text-sm mb-1" style={{ color: "#A8D5B8" }}>مرحباً بك في نزاهة التوظيف</p>
+            <h1 className="text-xl sm:text-2xl font-bold mb-1 text-white">{candidate.name}</h1>
+            <p className="text-xs sm:text-sm" style={{ color: "#C8E8D4" }}>
+              {candidate.jobTitle} · {candidate.department}
+            </p>
+
+            <div className="flex flex-wrap gap-3 sm:gap-4 mt-3 sm:mt-4">
               <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-                <Briefcase className="w-3.5 h-3.5" />
-                تاريخ المباشرة: {formatDate(candidate.startDate)}
+                <Calendar className="w-3.5 h-3.5" />
+                تاريخ القبول: {formatDate(candidate.acceptanceDate)}
               </div>
-            )}
-            {customFields.filter((f) => f.value !== null).map((f) => (
-              <div key={f.id} className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-                <Building className="w-3.5 h-3.5" />
-                {f.labelAr}: {f.display}
-              </div>
-            ))}
+              {candidate.startDate && (
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
+                  <Briefcase className="w-3.5 h-3.5" />
+                  تاريخ المباشرة: {formatDate(candidate.startDate)}
+                </div>
+              )}
+              {customFields.filter((f) => f.value !== null).map((f) => (
+                <div key={f.id} className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
+                  <Building className="w-3.5 h-3.5" />
+                  {f.labelAr}: {f.display}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Institutional Welcome Message */}
+      {/* HR welcome note or generic welcome */}
       <WelcomeMessage
         firstName={firstName}
         department={candidate.department}
         jobTitle={candidate.jobTitle}
+        hrWelcomeNote={candidate.hrWelcomeNote}
       />
 
-      <div className="grid lg:grid-cols-3 gap-6 mt-6">
-        {/* Right: Progress + Next Action + Countdown */}
-        <div className="lg:col-span-1 space-y-4">
+      {/*
+        Mobile layout: documents come FIRST so the candidate immediately sees
+        what they need to upload. Sidebar (progress, actions, contract) follows.
+        Desktop: 3-column grid — sidebar right, documents left.
+        CSS `order` handles the swap without duplicating markup.
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-2">
+
+        {/* Documents — order-1 on mobile (first), order-2 on desktop (right 2/3) */}
+        <div className="order-1 lg:order-2 lg:col-span-2">
+          <div className="bg-white rounded-2xl border p-5 sm:p-6 shadow-sm"
+            style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-bold text-base" style={{ color: "var(--color-dark)" }}>
+                  {firstName}، هذه مستنداتك المطلوبة
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                  {requiredDocs.filter((d) => d.status === "approved").length} من{" "}
+                  {requiredDocs.length} مستندات مكتملة
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {requiredDocs.map((doc) => (
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  candidateFirstName={firstName}
+                />
+              ))}
+            </div>
+
+            {optionalDocs.length > 0 && (
+              <>
+                <h3 className="font-semibold text-sm mb-3"
+                  style={{ color: "var(--color-text-muted)" }}>
+                  مستندات اختيارية
+                </h3>
+                <div className="space-y-3">
+                  {optionalDocs.map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      document={doc}
+                      candidateFirstName={firstName}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar — order-2 on mobile (after docs), order-1 on desktop (left 1/3) */}
+        <div className="order-2 lg:order-1 lg:col-span-1 space-y-4">
           <ProgressTracker
             steps={candidate.steps}
             completionPercentage={candidate.completionPercentage}
@@ -150,52 +218,6 @@ export default async function CandidateDashboard() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Left: Documents */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border p-6 shadow-sm"
-            style={{ borderColor: "var(--color-border)" }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="font-bold text-base" style={{ color: "var(--color-dark)" }}>
-                  {firstName}، هذه مستنداتك المطلوبة
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                  {requiredDocs.filter((d) => d.status === "approved").length} من{" "}
-                  {requiredDocs.length} مستندات مكتملة
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {requiredDocs.map((doc) => (
-                <DocumentCard
-                  key={doc.id}
-                  document={doc}
-                  candidateFirstName={firstName}
-                />
-              ))}
-            </div>
-
-            {optionalDocs.length > 0 && (
-              <>
-                <h3 className="font-semibold text-sm mb-3"
-                  style={{ color: "var(--color-text-muted)" }}>
-                  مستندات اختيارية
-                </h3>
-                <div className="space-y-3">
-                  {optionalDocs.map((doc) => (
-                    <DocumentCard
-                      key={doc.id}
-                      document={doc}
-                      candidateFirstName={firstName}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
           </div>
         </div>
       </div>

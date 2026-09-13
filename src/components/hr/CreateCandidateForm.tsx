@@ -26,6 +26,7 @@ interface Props {
 }
 
 interface FormState {
+  hrWelcomeNote: string;
   nameAr: string;
   nationalId: string;
   email: string;
@@ -45,6 +46,7 @@ const INITIAL: FormState = {
   department: "",
   acceptanceDate: new Date().toISOString().split("T")[0],
   expectedStartDate: "",
+  hrWelcomeNote: "",
 };
 
 type Status = { type: "success"; token?: string; email: string; candidateId: string } | { type: "error"; message: string } | null;
@@ -122,6 +124,7 @@ export function CreateCandidateForm({ fields }: Props) {
           acceptanceDate: form.acceptanceDate,
           expectedStartDate: form.expectedStartDate || undefined,
           customFields: custom,
+          hrWelcomeNote: form.hrWelcomeNote.trim() || undefined,
         }),
       });
 
@@ -344,6 +347,27 @@ export function CreateCandidateForm({ fields }: Props) {
               onBlur={onBlur}
             />
           </Field>
+        </div>
+
+        {/* HR Welcome Note */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--color-dark)" }}>
+            رسالة ترحيب للمرشح{" "}
+            <span className="font-normal text-xs" style={{ color: "var(--color-text-muted)" }}>(اختياري)</span>
+          </label>
+          <textarea
+            value={form.hrWelcomeNote}
+            onChange={(e) => setForm((p) => ({ ...p, hrWelcomeNote: e.target.value }))}
+            placeholder="اكتب رسالة ترحيب شخصية تظهر للمرشح فور تسجيل دخوله — يمكن تضمين تعليمات خاصة، موقع العمل، اسم المشرف المباشر..."
+            rows={3}
+            className={inputBase}
+            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+            onFocus={(e) => { e.target.style.borderColor = "var(--color-primary)"; e.target.style.boxShadow = "0 0 0 3px var(--color-primary-muted)"; }}
+            onBlur={(e) => { e.target.style.borderColor = "var(--color-border)"; e.target.style.boxShadow = "none"; }}
+          />
+          <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+            تظهر هذه الرسالة كبانر مميز في أعلى لوحة تحكم المرشح ويمكنه إغلاقها.
+          </p>
         </div>
       </div>
 

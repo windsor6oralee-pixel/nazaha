@@ -28,6 +28,9 @@ model PlatformAdmin {
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -164,6 +167,9 @@ model User {
   phone        String?
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -322,6 +328,8 @@ model Application {
   contracts          Contract[]
   auditLogs          AuditLog[]
   preboardingChannel PreboardingChannel?
+
+  hrWelcomeNote String?   // optional personalised message written by HR, shown as a banner to the candidate
 
   submittedAt DateTime?
   approvedAt  DateTime?

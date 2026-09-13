@@ -35,6 +35,7 @@ export interface Candidate {
   department: string;
   acceptanceDate: string;
   startDate?: string;
+  hrWelcomeNote?: string | null;
   status: ApplicationStatus;
   completionPercentage: number;
   documents: Document[];

@@ -19,16 +19,36 @@ export interface AuthPrincipal {
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60_000; // 15 minutes
+
 export async function verifyHRCredentials(email: string, password: string): Promise<AuthPrincipal | null> {
   const user = await prisma.user.findUnique({
     where: { email: email.trim().toLowerCase() },
     include: { role: true, organization: { select: { isActive: true } } },
   });
-  // A suspended organization locks out all of its staff, whatever their own status.
   if (!user || !user.isActive || !user.organization.isActive) return null;
-  if (!(await compare(password, user.passwordHash))) return null;
 
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  // Lockout check — return null without revealing whether the account exists
+  if (user.lockedUntil && user.lockedUntil > new Date()) return null;
+
+  const passwordOk = await compare(password, user.passwordHash);
+  if (!passwordOk) {
+    const attempts = user.failedLoginAttempts + 1;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: attempts,
+        lockedUntil: attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS) : null,
+      },
+    });
+    return null;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+  });
   await prisma.auditLog.create({
     data: { actorType: "USER", action: "user.login", resource: "User", resourceId: user.id, userId: user.id },
   });
@@ -83,9 +103,26 @@ export async function verifyCandidateToken(rawToken: string): Promise<AuthPrinci
 export async function verifyPlatformCredentials(email: string, password: string): Promise<AuthPrincipal | null> {
   const admin = await prisma.platformAdmin.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!admin || !admin.isActive) return null;
-  if (!(await compare(password, admin.passwordHash))) return null;
 
-  await prisma.platformAdmin.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } });
+  if (admin.lockedUntil && admin.lockedUntil > new Date()) return null;
+
+  const passwordOk = await compare(password, admin.passwordHash);
+  if (!passwordOk) {
+    const attempts = admin.failedLoginAttempts + 1;
+    await prisma.platformAdmin.update({
+      where: { id: admin.id },
+      data: {
+        failedLoginAttempts: attempts,
+        lockedUntil: attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS) : null,
+      },
+    });
+    return null;
+  }
+
+  await prisma.platformAdmin.update({
+    where: { id: admin.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+  });
   await prisma.auditLog.create({
     data: { actorType: "SYSTEM", action: "platform_admin.login", resource: "PlatformAdmin", resourceId: admin.id },
   });

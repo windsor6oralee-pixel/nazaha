@@ -93,7 +93,7 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
         background: statusBg[doc.status],
       }}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 flex-wrap sm:flex-nowrap">
         {/* Icon */}
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -165,42 +165,43 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
           )}
         </div>
 
-        {/* Upload button */}
+        {/* Upload button — full-width on mobile, compact on desktop */}
         {canUpload && (
-          <>
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="hidden"
-              onChange={handleFileChange}
-              aria-label={`رفع ${doc.nameAr}`}
-            />
-            <button
-              onClick={() => inputRef.current?.click()}
-              disabled={isPending}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium border px-3 py-1.5 rounded-lg transition-colors"
-              style={{
-                background: "var(--color-primary-muted)",
-                color: "var(--color-primary)",
-                borderColor: "var(--color-primary)",
-                opacity: isPending ? 0.6 : 1,
-                cursor: isPending ? "not-allowed" : "pointer",
-              }}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  جارٍ الرفع...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-3.5 h-3.5" />
-                  {doc.status === "rejected" ? "إعادة الرفع" : "رفع"}
-                </>
-              )}
-            </button>
-          </>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-label={`رفع ${doc.nameAr}`}
+          />
+        )}
+        {canUpload && (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={isPending}
+            className="w-full sm:w-auto sm:flex-shrink-0 flex items-center justify-center gap-1.5 text-sm font-medium border px-4 rounded-xl transition-colors"
+            style={{
+              background: "var(--color-primary-muted)",
+              color: "var(--color-primary)",
+              borderColor: "var(--color-primary)",
+              opacity: isPending ? 0.6 : 1,
+              cursor: isPending ? "not-allowed" : "pointer",
+              minHeight: 44,
+            }}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                جارٍ الرفع...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                {doc.status === "rejected" ? "إعادة الرفع" : "رفع المستند"}
+              </>
+            )}
+          </button>
         )}
       </div>
     </div>

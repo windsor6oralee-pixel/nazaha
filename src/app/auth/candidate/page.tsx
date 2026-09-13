@@ -41,15 +41,15 @@ function CandidateLoginPageInner() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6"
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8"
       style={{ background: "var(--color-beige)" }} dir="rtl">
 
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6 sm:mb-8">
           <NazahaLogo variant="dark" size="md" />
         </div>
 
-        <div className="bg-white rounded-2xl border shadow-sm p-8"
+        <div className="bg-white rounded-2xl border shadow-sm p-6 sm:p-8"
           style={{ borderColor: "var(--color-border)" }}>
 
           {/* Header */}
@@ -90,11 +90,12 @@ function CandidateLoginPageInner() {
                 placeholder="الصق الرمز هنا..."
                 required
                 dir="ltr"
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all font-mono tracking-wider text-center"
+                className="w-full px-4 py-3 rounded-xl border outline-none transition-all font-mono tracking-wider text-center"
                 style={{
                   borderColor: error ? "var(--color-error)" : "var(--color-border)",
                   background: "var(--color-surface)",
                   color: "var(--color-text)",
+                  fontSize: "1rem", // ≥16px prevents iOS auto-zoom on focus
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = "var(--color-primary)";
@@ -118,8 +119,9 @@ function CandidateLoginPageInner() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all"
               style={{
+                minHeight: 52,
                 background: isPending ? "#6B9E82" : "var(--color-primary)",
                 color: "white",
                 cursor: isPending ? "not-allowed" : "pointer",

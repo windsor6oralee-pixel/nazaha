@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import {
-  FileText, PenLine, ShieldCheck, MessagesSquare, BarChart3, FileSignature, CheckCircle2,
+  FileText, PenLine, ShieldCheck, MessagesSquare, BarChart3, CheckCircle2,
 } from "lucide-react";
 
 /**
@@ -95,13 +95,6 @@ export function BentoShowcase() {
             </div>
           </article>
 
-          {/* 6 — contract templates */}
-          <article className="bento-card" data-reveal style={{ "--i": 5 } as React.CSSProperties}>
-            <div className="bento-icon"><FileSignature /></div>
-            <h3>عقود من قوالب جهتك</h3>
-            <p>قوالب عقود بهوية الجهة وحقولها، تُولَّد للمرشح بضغطة واحدة.</p>
-            <div className="bento-lines" aria-hidden><span /><span /><span /></div>
-          </article>
         </div>
       </div>
     </section>

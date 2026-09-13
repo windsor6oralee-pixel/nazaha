@@ -59,6 +59,6 @@ export const authConfig: NextAuthConfig = {
     },
   },
 
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 }, // 8-hour tokens for a work system
   providers: [], // filled in auth.ts
 };

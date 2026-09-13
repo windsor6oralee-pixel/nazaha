@@ -12,6 +12,7 @@ interface Body {
   department?: unknown;
   acceptanceDate?: unknown;
   expectedStartDate?: unknown;
+  hrWelcomeNote?: unknown;
 }
 
 function validate(body: Body): string | null {
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       expectedStartDate: body.expectedStartDate
         ? new Date(body.expectedStartDate as string)
         : undefined,
+      hrWelcomeNote: body.hrWelcomeNote ? String(body.hrWelcomeNote).trim() : undefined,
       organizationId: ctx.organizationId,
       createdByUserId: ctx.userId,
     });
