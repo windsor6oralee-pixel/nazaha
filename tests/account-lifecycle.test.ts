@@ -12,7 +12,8 @@ import {
 
 const HR_EMAIL = "salma.rashidi@mof.gov.sa";
 const HR_PASSWORD = process.env.SEED_DEV_HR_PASSWORD ?? "change-me-dev-only";
-const CANDIDATE_TOKEN = process.env.SEED_DEV_CANDIDATE_TOKEN ?? "dev-magic-token-ahmed-2026";
+// Fallback must equal the seed's fallback (prisma/seed.ts) — CI has no .env, so both sides use it.
+const CANDIDATE_TOKEN = process.env.SEED_DEV_CANDIDATE_TOKEN ?? "change-me-dev-token";
 
 let orgId: string;
 let userId: string;

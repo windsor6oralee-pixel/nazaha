@@ -43,6 +43,7 @@ jobs:
       STORAGE_PROVIDER: local
       STORAGE_LOCAL_PATH: ./storage
       SEED_DEV_HR_PASSWORD: ci-seed-password
+      SEED_DEV_CANDIDATE_TOKEN: ci-seed-candidate-token
       SEED_DEV_PLATFORM_PASSWORD: ci-seed-platform-password
       NEXT_TELEMETRY_DISABLED: "1"
 
