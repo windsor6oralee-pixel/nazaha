@@ -60,6 +60,17 @@ describe("same-tenant access", () => {
   });
 });
 
+describe("repository lookups (Vuln 1 regression)", () => {
+  it("getCandidateById requires the caller's organization", async () => {
+    const { getCandidateById, getContractForApplication, getCandidateByApplicationId } =
+      await import("@/infrastructure/repositories/candidate.repository");
+    expect(await getCandidateById(orgA, candA)).not.toBeNull();
+    expect(await getCandidateById(orgB, candA)).toBeNull();
+    expect(await getCandidateByApplicationId(orgB, appA)).toBeNull();
+    expect(await getContractForApplication(orgB, appA)).toBeNull();
+  });
+});
+
 describe("cross-tenant reads", () => {
   it.each([
     ["application.findUnique", () => dbB.application.findUnique({ where: { id: appA } })],

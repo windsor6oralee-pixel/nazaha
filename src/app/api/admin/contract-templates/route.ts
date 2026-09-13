@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ContractType } from "@prisma/client";
 import { requireHR } from "@/infrastructure/tenant";
+import { containsDisallowedHtml } from "@/infrastructure/contracts/html-sanitizer";
 import {
   listTemplates,
   saveTemplateVersion,
@@ -20,7 +21,11 @@ function parseBody(body: unknown): { type: ContractType; nameAr: string; bodyHtm
   if (typeof b.nameAr !== "string" || b.nameAr.trim().length < 2) return { error: "اسم العقد مطلوب" };
   if (typeof b.bodyHtml !== "string" || b.bodyHtml.trim().length < 20) return { error: "نص القالب قصير جداً" };
   if (b.bodyHtml.length > MAX_BODY) return { error: "نص القالب يتجاوز الحد المسموح" };
-  if (/<script[\s>]/i.test(b.bodyHtml) || /\son[a-z]+\s*=/i.test(b.bodyHtml)) return { error: "لا يُسمح بالسكربتات أو معالجات الأحداث داخل القالب" };
+  // Allow-list check: only structural markup and known classes may be saved; the renderer
+  // sanitizes again on output, so a template that slips through can still not execute.
+  if (containsDisallowedHtml(b.bodyHtml)) {
+    return { error: "القالب يحتوي وسوماً أو سمات غير مسموحة (يُسمح بالعناوين والفقرات والجداول والقوائم وتنسيق النص فقط)" };
+  }
   return { type: b.type as ContractType, nameAr: b.nameAr, bodyHtml: b.bodyHtml };
 }
 

@@ -75,6 +75,11 @@ export async function updateOrganizationProfile(
   return toProfile(row);
 }
 
+export async function getOrganizationLogoPath(organizationId: string): Promise<string | null> {
+  const row = await prisma.organization.findUnique({ where: { id: organizationId }, select: { logoPath: true } });
+  return row?.logoPath ?? null;
+}
+
 export async function setOrganizationLogo(organizationId: string, logoPath: string | null) {
   await prisma.organization.update({ where: { id: organizationId }, data: { logoPath } });
 }

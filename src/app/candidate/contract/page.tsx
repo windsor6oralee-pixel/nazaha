@@ -1,7 +1,7 @@
-import { auth } from "@/infrastructure/auth/auth";
-import { redirect } from "next/navigation";
-import { prisma } from "@/infrastructure/database/client";
+import { notFound } from "next/navigation";
+import { getTenantContext, tenantPrisma } from "@/infrastructure/tenant";
 import { getContractForApplication } from "@/infrastructure/repositories/candidate.repository";
+import { sanitizeContractHtml } from "@/infrastructure/contracts/html-sanitizer";
 import {
   ContractSigningPanel,
   ContractLockedPanel,
@@ -9,33 +9,30 @@ import {
 } from "@/components/candidate/ContractSigningPanel";
 
 export default async function ContractPage() {
-  const session = await auth();
-  const applicationId = session?.user?.applicationId;
-  if (!applicationId) redirect("/candidate");
+  const ctx = await getTenantContext();
+  if (!ctx || ctx.kind !== "candidate" || !ctx.applicationId) return notFound();
+  const { organizationId, applicationId, candidateId } = ctx;
+  const db = tenantPrisma(organizationId);
 
-  const [contract, candidate] = await Promise.all([
-    getContractForApplication(applicationId),
-    prisma.application.findUnique({
-      where: { id: applicationId },
+  const [contract, application] = await Promise.all([
+    getContractForApplication(organizationId, applicationId),
+    db.application.findFirst({
+      where: { id: applicationId, candidateId },
       select: {
         candidate: { select: { nameAr: true } },
-        documents: {
-          where: { isRequired: true },
-          select: { status: true },
-        },
+        documents: { where: { isRequired: true }, select: { status: true } },
       },
     }),
   ]);
+  if (!application) return notFound();
 
-  const requiredDocs = candidate?.documents ?? [];
+  const requiredDocs = application.documents;
   const totalRequired = requiredDocs.length;
   const approvedCount = requiredDocs.filter((d) => d.status === "APPROVED").length;
   const allApproved = totalRequired > 0 && approvedCount === totalRequired;
-  const candidateName = candidate?.candidate.nameAr ?? "";
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      {/* Header */}
       <div className="mb-6">
         <p className="text-xs font-medium mb-1" style={{ color: "var(--color-primary)" }}>
           التوقيع الإلكتروني
@@ -51,7 +48,6 @@ export default async function ContractPage() {
         </p>
       </div>
 
-      {/* Content: conditional on state */}
       {!allApproved ? (
         <ContractLockedPanel approvedCount={approvedCount} totalRequired={totalRequired} />
       ) : !contract ? (
@@ -64,9 +60,9 @@ export default async function ContractPage() {
             status: contract.status,
             generatedAt: contract.generatedAt?.toISOString() ?? null,
             signedAt: contract.signatures[0]?.signedAt?.toISOString() ?? null,
-            renderedHtml: contract.renderedHtml,
+            renderedHtml: contract.renderedHtml ? sanitizeContractHtml(contract.renderedHtml) : null,
           }}
-          candidateNameAr={candidateName}
+          candidateNameAr={application.candidate.nameAr}
         />
       )}
     </div>

@@ -7,27 +7,27 @@ import { SignedContractCard } from "@/components/candidate/SignedContractCard";
 import { WelcomeMessage } from "@/components/candidate/WelcomeMessage";
 import { PreboardingHub } from "@/components/candidate/PreboardingHub";
 import { CountdownCard } from "@/components/candidate/CountdownCard";
-import { auth } from "@/infrastructure/auth/auth";
+import { getTenantContext } from "@/infrastructure/tenant";
 import {
   getCandidateByApplicationId,
   getContractForApplication,
 } from "@/infrastructure/repositories/candidate.repository";
 import { getOrganizationBranding } from "@/infrastructure/services/organization.service";
 import { getCandidateFields } from "@/infrastructure/custom-fields/field.service";
+import { sanitizeContractHtml } from "@/infrastructure/contracts/html-sanitizer";
 import { formatDate } from "@/lib/utils";
 import { notFound } from "next/navigation";
 
 export default async function CandidateDashboard() {
-  const session = await auth();
-  const applicationId = session!.user.applicationId;
-
-  if (!applicationId) return notFound();
+  const ctx = await getTenantContext();
+  if (!ctx || ctx.kind !== "candidate" || !ctx.applicationId) return notFound();
+  const { organizationId, applicationId, candidateId } = ctx;
 
   const [candidate, contract, org, customFields] = await Promise.all([
-    getCandidateByApplicationId(applicationId),
-    getContractForApplication(applicationId),
-    getOrganizationBranding(session!.user.organizationId),
-    getCandidateFields(session!.user.organizationId, session!.user.id, { candidateVisibleOnly: true }),
+    getCandidateByApplicationId(organizationId, applicationId),
+    getContractForApplication(organizationId, applicationId),
+    getOrganizationBranding(organizationId),
+    getCandidateFields(organizationId, candidateId, { candidateVisibleOnly: true }),
   ]);
   if (!candidate) return notFound();
 
@@ -106,7 +106,7 @@ export default async function CandidateDashboard() {
               jobTitle={candidate.jobTitle}
               organization={org.nameAr}
               generatedAt={contract.generatedAt?.toISOString() ?? new Date().toISOString()}
-              renderedHtml={contract.renderedHtml}
+              renderedHtml={contract.renderedHtml ? sanitizeContractHtml(contract.renderedHtml) : null}
             />
           )}
           {contract?.status === "FULLY_SIGNED" && (

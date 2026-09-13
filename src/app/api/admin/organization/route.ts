@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { requireHR } from "@/infrastructure/tenant";
-import { prisma } from "@/infrastructure/database/client";
-import { diffFields } from "@/infrastructure/audit/audit.service";
+import { diffFields, recordAudit } from "@/infrastructure/audit/audit.service";
 import {
   getOrganizationProfile,
   updateOrganizationProfile,
@@ -78,15 +76,13 @@ export async function PATCH(req: Request) {
     ? diffFields(before as unknown as Record<string, unknown>, parsed.data as Record<string, unknown>, AUDITED_FIELDS)
     : {};
   if (Object.keys(changes).length > 0) {
-    await prisma.auditLog.create({
-      data: {
-        actorType: "USER",
-        userId: ctx.userId,
-        action: "organization.updated",
-        resource: "Organization",
-        resourceId: ctx.organizationId,
-        metadata: { changes } as unknown as Prisma.InputJsonObject,
-      },
+    await recordAudit({
+      actorType: "USER",
+      userId: ctx.userId,
+      action: "organization.updated",
+      resource: "Organization",
+      resourceId: ctx.organizationId,
+      metadata: { changes },
     });
   }
 

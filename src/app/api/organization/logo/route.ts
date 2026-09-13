@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/infrastructure/tenant";
 import { getStorage } from "@/infrastructure/storage";
-import { prisma } from "@/infrastructure/database/client";
+import { getOrganizationLogoPath } from "@/infrastructure/services/organization.service";
 
 const CONTENT_TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg" };
 
@@ -10,16 +10,13 @@ export async function GET() {
   const ctx = await getTenantContext();
   if (!ctx) return new NextResponse("غير مصرح", { status: 401 });
 
-  const org = await prisma.organization.findUnique({
-    where: { id: ctx.organizationId },
-    select: { logoPath: true },
-  });
-  if (!org?.logoPath) return new NextResponse("لا يوجد شعار", { status: 404 });
+  const logoPath = await getOrganizationLogoPath(ctx.organizationId);
+  if (!logoPath) return new NextResponse("لا يوجد شعار", { status: 404 });
 
-  const result = await getStorage().stream(org.logoPath);
+  const result = await getStorage().stream(logoPath);
   if (!result) return new NextResponse("لا يوجد شعار", { status: 404 });
 
-  const ext = org.logoPath.split(".").pop() ?? "";
+  const ext = logoPath.split(".").pop() ?? "";
   const webStream = new ReadableStream({
     start(controller) {
       result.stream.on("data", (chunk) => controller.enqueue(chunk));

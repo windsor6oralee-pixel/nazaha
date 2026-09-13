@@ -1,5 +1,27 @@
 import type { ActorType, Prisma } from "@prisma/client";
+import { prisma } from "@/infrastructure/database/client";
 import type { TenantPrisma } from "@/infrastructure/tenant/scoped-prisma";
+
+// Append-only write path. Routes call this instead of touching the global client.
+export async function recordAudit(entry: {
+  actorType: ActorType;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  userId?: string;
+  candidateId?: string;
+  applicationId?: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  await prisma.auditLog.create({
+    data: {
+      ...entry,
+      metadata: entry.metadata ? (entry.metadata as unknown as Prisma.InputJsonObject) : undefined,
+    },
+  });
+}
 
 // ── Change tracking convention ───────────────────────────────────────────────
 // Writers put `metadata.changes = { field: { from, to } }`; the viewer renders it

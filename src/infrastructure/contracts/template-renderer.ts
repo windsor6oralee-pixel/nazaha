@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { sanitizeContractHtml } from "./html-sanitizer";
 
 // Every built-in placeholder a template may use. Kept as data so the admin editor
 // and the renderer can never disagree about what exists. Tenants extend this set
@@ -46,11 +47,13 @@ function isAllowed(key: string, customKeys: ReadonlySet<string>): boolean {
 // Unknown placeholders are left verbatim so a typo is visible rather than silently blank.
 export function renderTemplate(bodyHtml: string, values: Record<string, string>, customKeys: Iterable<string> = []): string {
   const custom = new Set(customKeys);
-  return bodyHtml.replace(PLACEHOLDER_RE, (match, key: string) => {
+  const rendered = bodyHtml.replace(PLACEHOLDER_RE, (match, key: string) => {
     if (!isAllowed(key, custom)) return match;
     const v = values[key];
     return v ? escapeHtml(v) : "<span class=\"missing\">—</span>";
   });
+  // Sanitize the OUTPUT: what gets frozen and hashed is guaranteed inert markup.
+  return sanitizeContractHtml(rendered);
 }
 
 export function findUnknownPlaceholders(bodyHtml: string, customKeys: Iterable<string> = []): string[] {

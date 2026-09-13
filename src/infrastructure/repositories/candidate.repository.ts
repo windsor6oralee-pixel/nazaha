@@ -30,12 +30,12 @@ const candidateInclude = {
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-/**
- * Returns a single candidate by their DB id, or null if not found.
- */
-export async function getCandidateById(id: string): Promise<Candidate | null> {
-  const db = await prisma.candidate.findUnique({
-    where: { id },
+// Every lookup takes the caller's organizationId first: a request-supplied id is never
+// enough on its own, so a candidate from another tenant resolves to null (→ 404).
+
+export async function getCandidateById(organizationId: string, id: string): Promise<Candidate | null> {
+  const db = await prisma.candidate.findFirst({
+    where: { id, organizationId },
     include: candidateInclude,
   });
   if (!db) return null;
@@ -47,16 +47,17 @@ export async function getCandidateById(id: string): Promise<Candidate | null> {
  * Used by the candidate portal where the session carries applicationId.
  */
 export async function getCandidateByApplicationId(
+  organizationId: string,
   applicationId: string
 ): Promise<Candidate | null> {
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
+  const application = await prisma.application.findFirst({
+    where: { id: applicationId, organizationId },
     select: { candidateId: true },
   });
   if (!application) return null;
 
-  const db = await prisma.candidate.findUnique({
-    where: { id: application.candidateId },
+  const db = await prisma.candidate.findFirst({
+    where: { id: application.candidateId, organizationId },
     include: candidateInclude,
   });
   if (!db) return null;
@@ -106,9 +107,9 @@ export async function getHRStats(organizationId: string): Promise<HRStat> {
 
 // ── Contract query ────────────────────────────────────────────────────────────
 
-export async function getContractForApplication(applicationId: string) {
+export async function getContractForApplication(organizationId: string, applicationId: string) {
   return prisma.contract.findFirst({
-    where: { applicationId, status: { in: ["PENDING_SIGNATURE", "FULLY_SIGNED"] } },
+    where: { applicationId, organizationId, status: { in: ["PENDING_SIGNATURE", "FULLY_SIGNED"] } },
     select: {
       id: true,
       type: true,

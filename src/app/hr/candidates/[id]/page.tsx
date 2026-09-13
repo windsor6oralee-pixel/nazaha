@@ -10,8 +10,7 @@ import {
   getCandidateById,
   getContractForApplication,
 } from "@/infrastructure/repositories/candidate.repository";
-import { prisma } from "@/infrastructure/database/client";
-import { getTenantContext } from "@/infrastructure/tenant";
+import { getTenantContext, tenantPrisma } from "@/infrastructure/tenant";
 import { getCandidateFields } from "@/infrastructure/custom-fields/field.service";
 import { getStatusLabel, getStatusStyle, formatDate } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -23,19 +22,24 @@ interface Props {
 export default async function CandidateDetailPage({ params }: Props) {
   const { id } = await params;
   const ctx = await getTenantContext();
+  if (!ctx || ctx.kind !== "hr") return notFound();
+  const orgId = ctx.organizationId;
+  const db = tenantPrisma(orgId);
+
+  // Every lookup is tenant-scoped: an id from another organization resolves to 404.
   const [candidate, appRow, customFields] = await Promise.all([
-    getCandidateById(id),
-    prisma.application.findFirst({
+    getCandidateById(orgId, id),
+    db.application.findFirst({
       where: { candidateId: id },
       select: { id: true },
       orderBy: { createdAt: "desc" },
     }),
-    ctx ? getCandidateFields(ctx.organizationId, id) : Promise.resolve([]),
+    getCandidateFields(orgId, id),
   ]);
   if (!candidate) return notFound();
 
   const applicationId = appRow?.id ?? "";
-  const contract = applicationId ? await getContractForApplication(applicationId) : null;
+  const contract = applicationId ? await getContractForApplication(orgId, applicationId) : null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">

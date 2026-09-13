@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/infrastructure/auth/auth";
+import { isPrincipalActive } from "@/infrastructure/auth/credentials.service";
 
 export interface HRContext {
   kind: "hr";
@@ -34,10 +35,18 @@ export function deny(status: 401 | 403 | 404, message?: string) {
   return NextResponse.json({ error: message ?? fallback }, { status });
 }
 
+// A valid JWT is necessary but not sufficient: the organization (and, for staff, the
+// user) must still be active right now. Suspension therefore takes effect within the
+// liveness cache TTL, not at token expiry.
 export async function getTenantContext(): Promise<TenantContext | null> {
   const session = await auth();
   const u = session?.user;
   if (!u?.id || !u.organizationId) return null;
+  if (u.sessionType !== "hr_user" && u.sessionType !== "candidate") return null;
+
+  if (!(await isPrincipalActive({ sessionType: u.sessionType, id: u.id, organizationId: u.organizationId }))) {
+    return null;
+  }
 
   if (u.sessionType === "hr_user") {
     return {
@@ -49,17 +58,14 @@ export async function getTenantContext(): Promise<TenantContext | null> {
       email: u.email ?? null,
     };
   }
-  if (u.sessionType === "candidate") {
-    return {
-      kind: "candidate",
-      candidateId: u.id,
-      organizationId: u.organizationId,
-      applicationId: u.applicationId ?? null,
-      nameAr: u.nameAr,
-      email: u.email ?? null,
-    };
-  }
-  return null;
+  return {
+    kind: "candidate",
+    candidateId: u.id,
+    organizationId: u.organizationId,
+    applicationId: u.applicationId ?? null,
+    nameAr: u.nameAr,
+    email: u.email ?? null,
+  };
 }
 
 export async function getPlatformContext(): Promise<PlatformContext | null> {

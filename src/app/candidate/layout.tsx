@@ -1,11 +1,11 @@
-import { auth } from "@/infrastructure/auth/auth";
 import { redirect } from "next/navigation";
+import { getTenantContext } from "@/infrastructure/tenant";
 import { PortalNavbar } from "@/components/layout/PortalNavbar";
 
 export default async function CandidateLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-
-  if (!session?.user || session.user.sessionType !== "candidate") {
+  // getTenantContext also verifies the organization is still active.
+  const ctx = await getTenantContext();
+  if (!ctx || ctx.kind !== "candidate") {
     redirect("/auth/candidate");
   }
 

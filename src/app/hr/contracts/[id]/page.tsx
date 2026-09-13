@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ShieldCheck, Clock, Fingerprint } from "lucide-react";
 import { getTenantContext, tenantPrisma } from "@/infrastructure/tenant";
+import { sanitizeContractHtml } from "@/infrastructure/contracts/html-sanitizer";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -58,7 +59,7 @@ export default async function HRContractViewPage({ params }: Props) {
       <div className="grid md:grid-cols-[1fr_260px] gap-5">
         <div className="bg-white rounded-2xl border p-6 sm:p-8" style={{ borderColor: "var(--color-border)" }}>
           {contract.renderedHtml
-            ? <div className="contract-body" dangerouslySetInnerHTML={{ __html: contract.renderedHtml }} />
+            ? <div className="contract-body" dangerouslySetInnerHTML={{ __html: sanitizeContractHtml(contract.renderedHtml) }} />
             : <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>هذا العقد أُنشئ قبل اعتماد القوالب ولا يحتوي نسخة نصية محفوظة.</p>}
         </div>
 

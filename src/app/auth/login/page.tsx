@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Shield, Loader2 } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 function HRLoginPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/hr";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/hr");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

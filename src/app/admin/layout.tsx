@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/infrastructure/auth/auth";
+import { getTenantContext } from "@/infrastructure/tenant";
 import { PortalNavbar } from "@/components/layout/PortalNavbar";
 import type { ReactNode } from "react";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const session = await auth();
+  const ctx = await getTenantContext();
 
-  if (!session?.user || session.user.sessionType !== "hr_user") {
+  if (!ctx || ctx.kind !== "hr") {
     redirect("/auth/login");
   }
 
-  if (!["admin", "hr_manager"].includes(session.user.role ?? "")) {
+  if (!["admin", "hr_manager"].includes(ctx.role)) {
     redirect("/hr");
   }
 

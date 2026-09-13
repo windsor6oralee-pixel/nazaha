@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { requireHR } from "@/infrastructure/tenant";
 import { getStorage } from "@/infrastructure/storage";
 import { detectMimeType, mimeToExtension } from "@/infrastructure/storage/file-validation";
-import { prisma } from "@/infrastructure/database/client";
-import { setOrganizationLogo } from "@/infrastructure/services/organization.service";
+import { getOrganizationLogoPath, setOrganizationLogo } from "@/infrastructure/services/organization.service";
 
 const ADMIN_ROLES = ["admin", "hr_manager"];
 const LOGO_MIME = new Set(["image/png", "image/jpeg"]);
@@ -31,8 +30,8 @@ export async function POST(req: Request) {
   if (!mime || !LOGO_MIME.has(mime)) return NextResponse.json({ error: "الشعار يجب أن يكون PNG أو JPEG" }, { status: 422 });
 
   const storage = getStorage();
-  const current = await prisma.organization.findUnique({ where: { id: ctx.organizationId }, select: { logoPath: true } });
-  if (current?.logoPath) await storage.delete(current.logoPath).catch(() => null);
+  const current = await getOrganizationLogoPath(ctx.organizationId);
+  if (current) await storage.delete(current).catch(() => null);
 
   const key = `orgs/${ctx.organizationId}/logo-${Date.now()}.${mimeToExtension(mime)}`;
   await storage.save(key, { buffer, originalName: file.name, mimeType: mime, sizeBytes: buffer.length });
@@ -45,8 +44,8 @@ export async function DELETE() {
   const ctx = await requireHR({ roles: ADMIN_ROLES });
   if (ctx instanceof NextResponse) return ctx;
 
-  const current = await prisma.organization.findUnique({ where: { id: ctx.organizationId }, select: { logoPath: true } });
-  if (current?.logoPath) await getStorage().delete(current.logoPath).catch(() => null);
+  const current = await getOrganizationLogoPath(ctx.organizationId);
+  if (current) await getStorage().delete(current).catch(() => null);
   await setOrganizationLogo(ctx.organizationId, null);
 
   return NextResponse.json({ ok: true });

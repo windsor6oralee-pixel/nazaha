@@ -9,7 +9,7 @@ export default async function DocumentsPage() {
 
   if (!applicationId) return notFound();
 
-  const candidate = await getCandidateByApplicationId(applicationId);
+  const candidate = await getCandidateByApplicationId(session!.user.organizationId, applicationId);
   if (!candidate) return notFound();
 
   const approvedCount = candidate.documents.filter((d) => d.status === "approved").length;

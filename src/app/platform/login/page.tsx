@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, ServerCog, Loader2, ShieldAlert } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 function PlatformLoginPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/platform";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/platform");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

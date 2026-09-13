@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { KeyRound, Loader2, ArrowRight } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 function CandidateLoginPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/candidate";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/candidate");
 
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
