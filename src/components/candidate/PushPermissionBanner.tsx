@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Bell, X } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 
 const noopSubscribe = () => () => {};
 
@@ -31,54 +32,29 @@ export function PushPermissionBanner() {
 
   if (!hydrated || !show) return null;
 
+  // Rendered in the content flow at the top of <main> (no fixed positioning), aligned to the page width.
   return (
-    <div
-      dir="rtl"
-      style={{
-        position: "fixed",
-        bottom: 20,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 1000,
-        background: "var(--color-primary-dark)",
-        color: "white",
-        borderRadius: 16,
-        padding: "14px 20px",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
-        maxWidth: "calc(100vw - 32px)",
-        width: 420,
-      }}
-    >
-      <Bell className="w-5 h-5 flex-shrink-0" style={{ color: "var(--color-gold-light)" }} />
-      <p style={{ flex: 1, fontSize: 14, lineHeight: 1.5 }}>
-        فعّل الإشعارات لتصلك تنبيهات الموارد البشرية فور صدورها
-      </p>
-      <button
-        onClick={requestPermission}
-        style={{
-          background: "var(--color-gold)",
-          color: "#1a1a1a",
-          border: "none",
-          borderRadius: 8,
-          padding: "6px 14px",
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
+    <div className="nz-page" style={{ marginBottom: "var(--space-24)" }}>
+      <div
+        dir="rtl"
+        role="region"
+        aria-label="تفعيل الإشعارات"
+        className="nz-alert nz-alert--gold nz-enter"
+        style={{ alignItems: "center", flexWrap: "wrap" }}
       >
-        تفعيل
-      </button>
-      <button
-        onClick={dismiss}
-        aria-label="إغلاق"
-        style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.6)", padding: 4 }}
-      >
-        <X className="w-4 h-4" />
-      </button>
+        <Icon name="notifications" size={20} label={false} style={{ marginTop: 0 }} />
+        <p style={{ flex: "1 1 220px", margin: 0, lineHeight: 1.5 }}>
+          فعّل الإشعارات لتصلك تنبيهات الموارد البشرية فور صدورها
+        </p>
+        <div className="flex items-center gap-2" style={{ flex: "none" }}>
+          <Button variant="secondary" icon="notifications" onClick={requestPermission}>
+            تفعيل الإشعارات
+          </Button>
+          <button type="button" onClick={dismiss} aria-label="إغلاق" className="nz-modal__close" style={{ margin: 0 }}>
+            <Icon name="close" size={20} label={false} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

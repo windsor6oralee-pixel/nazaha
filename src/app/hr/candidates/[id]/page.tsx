@@ -14,7 +14,7 @@ import {
 } from "@/infrastructure/repositories/candidate.repository";
 import { getTenantContext, tenantPrisma } from "@/infrastructure/tenant";
 import { getCandidateFields } from "@/infrastructure/custom-fields/field.service";
-import { getStatusLabel, getStatusStyle, formatDate } from "@/lib/utils";
+import { getStatusLabel, getStatusTone, formatDate } from "@/lib/utils";
 import { notFound } from "next/navigation";
 
 interface Props {
@@ -76,7 +76,7 @@ export default async function CandidateDetailPage({ params }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <Badge style={getStatusStyle(candidate.status)}>
+            <Badge tone={getStatusTone(candidate.status)}>
               {getStatusLabel(candidate.status)}
             </Badge>
             <SendAlertButton candidateId={candidate.id} />

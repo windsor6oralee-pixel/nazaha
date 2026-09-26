@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import {
-  Send, Bell, FolderOpen, ToggleLeft, ToggleRight,
-  Loader2, MessageSquare,
-} from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
 
 interface Message {
   id: string;
@@ -90,150 +91,166 @@ export function HRPreboardingPanel({ applicationId, candidateName }: HRPreboardi
     FILE_REQUEST: "طلب ملف من المرشح",
   };
 
+  const hasNew = messages.filter(m => !m.isRead && m.senderType === "CANDIDATE").length > 0;
+
   return (
-    <div
-      className="mt-4 bg-white rounded-2xl border overflow-hidden shadow-sm"
-      style={{ borderColor: "var(--color-border)" }}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-5 py-3 border-b"
-        style={{ borderColor: "var(--color-border)", background: "var(--color-beige)" }}
-      >
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
-          <span className="text-sm font-bold" style={{ color: "var(--color-dark)" }}>
-            قناة الاستعداد للمباشرة
-          </span>
-          {messages.filter(m => !m.isRead && m.senderType === "CANDIDATE").length > 0 && (
-            <span
-              className="text-xs rounded-full px-1.5 py-0.5 font-bold"
-              style={{ background: "var(--color-error)", color: "white" }}
-            >
-              جديد
-            </span>
-          )}
-        </div>
+    <Card
+      flush
+      className="mt-6"
+      title={
+        <span className="inline-flex items-center gap-2 flex-wrap">
+          <Icon name="messages" size={24} label={false} style={{ color: "var(--green-700)" }} />
+          قناة الاستعداد للمباشرة
+          {hasNew && <Badge tone="brand" icon="notifications">جديد</Badge>}
+        </span>
+      }
+      action={
         <button
+          type="button"
+          role="switch"
+          aria-checked={bidirectional}
           onClick={toggleBidirectional}
           disabled={togglingBidi}
-          className="flex items-center gap-1.5 text-xs transition-colors"
-          style={{ color: bidirectional ? "var(--color-primary)" : "var(--color-text-muted)" }}
           title="تفعيل الاتصال ثنائي الاتجاه"
+          className="inline-flex items-center gap-2 flex-none"
+          style={{
+            minHeight: "var(--tap-target-min)",
+            background: "none",
+            border: 0,
+            padding: 0,
+            cursor: togglingBidi ? "not-allowed" : "pointer",
+            fontSize: 13,
+            fontWeight: 500,
+            color: bidirectional ? "var(--green-700)" : "var(--ink-muted)",
+          }}
         >
-          {bidirectional
-            ? <ToggleRight className="w-5 h-5" />
-            : <ToggleLeft className="w-5 h-5" />}
+          <span
+            aria-hidden
+            style={{
+              position: "relative",
+              width: 36,
+              height: 20,
+              borderRadius: "var(--radius-full)",
+              background: bidirectional ? "var(--green-700)" : "var(--surface-200)",
+              border: "1px solid var(--border-100)",
+              transition: "background-color var(--motion-quick) var(--ease-standard)",
+              flex: "none",
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                insetInlineStart: 2,
+                width: 14,
+                height: 14,
+                borderRadius: "var(--radius-full)",
+                background: "var(--surface-000)",
+                transform: bidirectional ? "translateX(-16px)" : "none",
+                transition: "transform var(--motion-quick) var(--ease-standard)",
+              }}
+            />
+          </span>
           {bidirectional ? "ثنائي الاتجاه" : "أحادي"}
         </button>
-      </div>
-
+      }
+    >
       {/* Messages */}
       <div
-        className="p-4 space-y-3 overflow-y-auto"
-        style={{ minHeight: 180, maxHeight: 320 }}
+        className="flex flex-col gap-4 overflow-y-auto"
+        style={{ minHeight: 180, maxHeight: 320, padding: "var(--space-16) var(--space-24)", borderTop: "1px solid var(--border-100)" }}
       >
         {messages.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-              ابدأ التواصل مع {firstName} لتجهيز يومه الأول.
-            </p>
-          </div>
+          <p className="ds-caption text-center" style={{ margin: 0, padding: "var(--space-32) 0", color: "var(--ink-muted)" }}>
+            ابدأ التواصل مع {firstName} لتجهيز يومه الأول.
+          </p>
         )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.senderType === "HR" ? "justify-end" : "justify-start"}`}
-          >
+        {messages.map((msg) => {
+          const fromHR = msg.senderType === "HR";
+          const readyReply = msg.type === "PING_RESPONSE";
+          return (
             <div
-              className="rounded-xl px-3 py-2 max-w-[85%] text-xs"
-              style={{
-                background: msg.senderType === "HR"
-                  ? "var(--color-primary)"
-                  : msg.type === "PING_RESPONSE"
-                  ? "#D1FAE5"
-                  : "var(--color-surface-alt)",
-                color: msg.senderType === "HR" ? "white" : "var(--color-dark)",
-                border: msg.type === "PING_RESPONSE" ? "1px solid #6EE7B7" : "none",
-              }}
+              key={msg.id}
+              className={`flex ${fromHR ? "justify-end" : "justify-start"}`}
             >
-              {msg.type !== "TEXT" && (
-                <p className="text-xs font-bold mb-1 opacity-75">
-                  {msg.senderType === "HR" ? "📋 " : "✅ "}{msgTypeLabel[msg.type]}
-                </p>
-              )}
-              {msg.content && <p>{msg.content}</p>}
-              <p
-                className="text-xs mt-1 opacity-60"
-                style={{ direction: "ltr", textAlign: "left" }}
+              <div
+                className="max-w-[85%]"
+                style={{
+                  padding: "var(--space-8) var(--space-16)",
+                  borderRadius: "var(--radius-12)",
+                  fontSize: 14,
+                  background: fromHR ? "var(--green-700)" : "var(--surface-000)",
+                  color: fromHR ? "var(--ink-invert)" : "var(--ink)",
+                  border: fromHR ? "1px solid var(--green-700)" : `1px solid ${readyReply ? "var(--success-500)" : "var(--border-100)"}`,
+                }}
               >
-                {new Date(msg.createdAt).toLocaleTimeString("ar-SA", { timeStyle: "short" })}
-              </p>
+                {msg.type !== "TEXT" && (
+                  <p className="ds-caption inline-flex items-center gap-2" style={{ margin: "0 0 4px", fontWeight: 600, opacity: 0.85 }}>
+                    <Icon name={fromHR ? "messages" : "approved"} size={16} label={false} />
+                    {msgTypeLabel[msg.type]}
+                  </p>
+                )}
+                {msg.content && <p style={{ margin: 0 }}>{msg.content}</p>}
+                <p
+                  className="font-numeric"
+                  style={{ margin: "4px 0 0", fontSize: 12, opacity: 0.7, direction: "ltr", textAlign: "left" }}
+                >
+                  {new Date(msg.createdAt).toLocaleTimeString("ar-SA-u-nu-latn", { timeStyle: "short" })}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
       {/* Quick actions */}
       <div
-        className="px-4 pt-2 pb-2 flex gap-2 border-t"
-        style={{ borderColor: "var(--color-border-light, var(--color-border))" }}
+        className="flex gap-2 flex-wrap"
+        style={{ padding: "var(--space-16) var(--space-24) 0", borderTop: "1px solid var(--border-100)" }}
       >
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="notifications"
           onClick={() => sendMessage("PING", "نود التأكد من استعدادك التام للحضور في اليوم المحدد. هل أنت جاهز؟")}
           disabled={isPending}
-          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors"
-          style={{
-            borderColor: "var(--color-gold)",
-            color: "var(--color-gold)",
-            background: "var(--color-gold-muted, #FDF6DC)",
-          }}
+          style={{ minHeight: "var(--tap-target-min)" }}
         >
-          <Bell className="w-3.5 h-3.5" />
           طلب تأكيد
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="documents"
           onClick={() => sendMessage("FILE_REQUEST", "يُرجى رفع الصورة الشخصية الرسمية قبل اليوم الأول.")}
           disabled={isPending}
-          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors"
-          style={{
-            borderColor: "var(--color-border)",
-            color: "var(--color-text-muted)",
-          }}
+          style={{ minHeight: "var(--tap-target-min)" }}
         >
-          <FolderOpen className="w-3.5 h-3.5" />
           طلب ملف
-        </button>
+        </Button>
       </div>
 
       {/* Text input */}
-      <div
-        className="px-4 pb-4 flex gap-2"
-      >
-        <input
+      <div className="flex items-end gap-2" style={{ padding: "var(--space-16) var(--space-24) var(--space-24)" }}>
+        <Input
+          className="flex-1"
+          aria-label="نص الرسالة"
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) sendMessage("TEXT"); }}
           placeholder={`اكتب رسالة لـ ${firstName}...`}
-          className="flex-1 text-sm rounded-xl border px-3 py-2 outline-none"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-dark)" }}
         />
-        <button
+        <Button
           onClick={() => text.trim() && sendMessage("TEXT")}
-          disabled={!text.trim() || isPending}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
-          style={{
-            background: text.trim() && !isPending ? "var(--color-primary)" : "var(--color-border)",
-            color: "white",
-          }}
-        >
-          {isPending
-            ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} />}
-        </button>
+          disabled={!text.trim()}
+          loading={isPending}
+          icon="messages"
+          aria-label="إرسال الرسالة"
+          style={{ paddingInline: "var(--space-16)" }}
+        />
       </div>
-    </div>
+    </Card>
   );
 }

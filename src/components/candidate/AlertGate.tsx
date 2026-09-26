@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { Modal } from "@/components/ui/Overlay";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 interface Alert {
   id: string;
@@ -68,6 +71,9 @@ export function AlertGate() {
     }
   }, [current]);
 
+  // Mandatory alert: the modal cannot be dismissed — only acknowledged.
+  const noop = useCallback(() => {}, []);
+
   async function acknowledge(alertId: string) {
     setIsAcking(true);
     try {
@@ -85,99 +91,35 @@ export function AlertGate() {
   const isHigh = current.priority === "HIGH";
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="alert-title"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: isHigh ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(4px)",
-        padding: "1rem",
-      }}
-    >
-      <div
-        dir="rtl"
-        style={{
-          background: "white",
-          borderRadius: 20,
-          maxWidth: 460,
-          width: "100%",
-          padding: "2rem",
-          boxShadow: isHigh
-            ? "0 0 0 4px #DC2626, 0 20px 60px rgba(0,0,0,0.4)"
-            : "0 8px 40px rgba(0,0,0,0.25)",
-          textAlign: "center",
-        }}
-      >
-        {/* Priority badge */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: isHigh ? "#FEE2E2" : "var(--color-primary-muted)",
-            color: isHigh ? "#DC2626" : "var(--color-primary)",
-            borderRadius: 99,
-            padding: "4px 14px",
-            fontSize: 12,
-            fontWeight: 700,
-            marginBottom: "1.25rem",
-          }}
-        >
-          {isHigh ? "⚠ تنبيه عاجل" : "رسالة من الموارد البشرية"}
-        </div>
-
-        <h2
-          id="alert-title"
-          style={{
-            fontSize: "1.2rem",
-            fontWeight: 700,
-            color: "var(--color-dark)",
-            marginBottom: "0.75rem",
-            fontFamily: "'Noto Kufi Arabic', sans-serif",
-          }}
-        >
-          {current.titleAr}
-        </h2>
-
-        <p
-          style={{
-            fontSize: "0.95rem",
-            color: "var(--color-text)",
-            lineHeight: 1.7,
-            marginBottom: "1.75rem",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {current.bodyAr}
-        </p>
-
-        <button
+    <Modal
+      open
+      onClose={noop}
+      dismissible={false}
+      title={current.titleAr}
+      actions={
+        <Button
+          block
+          variant={isHigh ? "danger" : "primary"}
+          icon="approved"
+          loading={isAcking}
           onClick={() => acknowledge(current.id)}
-          disabled={isAcking}
-          style={{
-            width: "100%",
-            padding: "14px 0",
-            borderRadius: 12,
-            border: "none",
-            background: isHigh ? "#DC2626" : "var(--color-primary)",
-            color: "white",
-            fontSize: "1rem",
-            fontWeight: 700,
-            cursor: isAcking ? "not-allowed" : "pointer",
-            opacity: isAcking ? 0.7 : 1,
-            fontFamily: "'Noto Kufi Arabic', sans-serif",
-          }}
         >
-          {isAcking ? "..." : "فهمت وأقرّ بالاستلام"}
-        </button>
+          فهمت وأقرّ بالاستلام
+        </Button>
+      }
+    >
+      {/* Priority badge */}
+      <div style={{ marginBottom: "var(--space-16)" }}>
+        {isHigh ? (
+          <Badge tone="rejected" icon="flag">تنبيه عاجل</Badge>
+        ) : (
+          <Badge tone="brand" icon="messages">رسالة من الموارد البشرية</Badge>
+        )}
       </div>
-    </div>
+
+      <p className="text-ink" style={{ margin: 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+        {current.bodyAr}
+      </p>
+    </Modal>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Users, X } from "lucide-react";
 import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 
 interface OnlineCandidate {
   candidateId: string;
@@ -51,58 +51,46 @@ export function OnlineBadge() {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
+        type="button"
         onClick={() => setOpen((p) => !p)}
         title="المرشحون المتصلون الآن"
+        aria-label={`المرشحون المتصلون الآن: ${count}`}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="nz-btn nz-btn--secondary nz-btn--sm"
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          background: "rgba(255,255,255,0.08)",
-          border: "1px solid rgba(255,255,255,0.15)",
-          borderRadius: 99,
-          padding: "4px 12px 4px 8px",
-          color: "white",
-          cursor: "pointer",
-          fontSize: 13,
+          borderRadius: "var(--radius-full)",
+          minHeight: "var(--tap-target-min)",
+          gap: "var(--space-8)",
+          padding: "0 var(--space-16)",
+          fontWeight: 600,
         }}
       >
-        <span style={{ position: "relative" }}>
-          <Users className="w-4 h-4" />
-          {count > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: -5,
-                left: -5,
-                width: 8,
-                height: 8,
-                background: "#22C55E",
-                borderRadius: "50%",
-                border: "1.5px solid var(--color-primary-dark, #0f3d1f)",
-                animation: "pulse-dot 2s ease-in-out infinite",
-              }}
-            />
-          )}
-        </span>
-        <span style={{ fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
-          {count > 0 ? count : "—"}
-        </span>
+        <OnlineDot muted={count === 0} />
+        <Icon name="candidates" size={16} label={false} />
+        <span className="font-numeric">{count > 0 ? count : "—"}</span>
+        <span className="max-sm:hidden" style={{ fontWeight: 500 }}>متصل الآن</span>
       </button>
 
       {open && (
         <div
           dir="rtl"
+          role="dialog"
+          aria-label="المتصلون الآن"
           style={{
             position: "absolute",
-            top: "calc(100% + 10px)",
-            right: 0,
+            top: "calc(100% + var(--space-8))",
+            insetInlineEnd: 0,
             width: 300,
-            background: "white",
-            borderRadius: 14,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-            border: "1px solid var(--color-border)",
+            maxWidth: "calc(100vw - var(--space-32))",
+            background: "var(--surface-000)",
+            borderRadius: "var(--radius-12)",
+            boxShadow: "var(--shadow-menu)",
+            border: "1px solid var(--border-100)",
             overflow: "hidden",
-            zIndex: 200,
+            zIndex: 60,
+            transformOrigin: "top center",
+            animation: "nz-menu-in 160ms var(--ease-enter) both",
           }}
         >
           {/* Header */}
@@ -111,59 +99,49 @@ export function OnlineBadge() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "12px 16px",
-              borderBottom: "1px solid var(--color-border)",
-              background: "var(--color-surface-alt)",
+              padding: "var(--space-8)",
+              paddingInlineStart: "var(--space-16)",
+              borderBottom: "1px solid var(--border-100)",
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-dark)" }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>
               المتصلون الآن
             </span>
             <button
+              type="button"
               onClick={() => setOpen(false)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", padding: 2 }}
+              aria-label="إغلاق"
+              className="nz-modal__close"
+              style={{ margin: 0 }}
             >
-              <X className="w-4 h-4" />
+              <Icon name="close" size={20} label={false} />
             </button>
           </div>
 
           {/* List */}
           {candidates.length === 0 ? (
-            <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 13 }}>
+            <div style={{ padding: "var(--space-24) var(--space-16)", textAlign: "center", color: "var(--ink-muted)", fontSize: 13 }}>
               لا يوجد مرشحون متصلون حالياً
             </div>
           ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            <ul style={{ listStyle: "none", margin: 0, padding: "var(--space-8)" }}>
               {candidates.map((c) => (
-                <li
-                  key={c.candidateId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 16px",
-                    borderBottom: "1px solid var(--color-border)",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: "#22C55E",
-                      flexShrink: 0,
-                    }}
-                  />
+                <li key={c.candidateId}>
                   {c.candidateId ? (
                     <Link
                       href={`/hr/candidates/${c.candidateId}`}
                       onClick={() => setOpen(false)}
-                      style={{ fontSize: 13, color: "var(--color-primary)", fontWeight: 600, textDecoration: "none" }}
+                      className="hover:bg-surface-100"
+                      style={{ ...rowStyle, fontWeight: 600, textDecoration: "none" }}
                     >
+                      <OnlineDot />
                       {c.nameAr}
                     </Link>
                   ) : (
-                    <span style={{ fontSize: 13, color: "var(--color-dark)" }}>{c.nameAr}</span>
+                    <span style={rowStyle}>
+                      <OnlineDot />
+                      {c.nameAr}
+                    </span>
                   )}
                 </li>
               ))}
@@ -171,16 +149,32 @@ export function OnlineBadge() {
           )}
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse-dot {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.35); opacity: 0.7; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          [style*="pulse-dot"] { animation: none !important; }
-        }
-      `}</style>
     </div>
+  );
+}
+
+const rowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--space-8)",
+  minHeight: "var(--tap-target-min)",
+  padding: "0 var(--space-16)",
+  borderRadius: "var(--radius-8)",
+  fontSize: 15,
+  color: "var(--ink)",
+} as const;
+
+function OnlineDot({ muted }: { muted?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: "var(--radius-full)",
+        background: muted ? "var(--neutral-500)" : "var(--success-500)",
+        flex: "none",
+      }}
+    />
   );
 }

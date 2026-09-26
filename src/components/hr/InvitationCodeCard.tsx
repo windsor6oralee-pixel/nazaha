@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { KeyRound, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { CopyButton } from "@/components/hr/CopyButton";
 import { ResendInvitationButton } from "@/components/hr/ResendInvitationButton";
 
@@ -19,14 +21,14 @@ interface Props {
   invitation: InvitationView | null;
 }
 
-const STATUS = {
-  active:  { label: "نشط",            cls: "badge-success", Icon: CheckCircle2 },
-  used:    { label: "مُستخدم",         cls: "badge-muted",   Icon: CheckCircle2 },
-  expired: { label: "منتهي الصلاحية",  cls: "badge-error",   Icon: AlertTriangle },
-} as const;
+const STATUS: Record<InvitationView["status"], { label: string; tone: BadgeTone; icon: IconName }> = {
+  active:  { label: "نشط",            tone: "done",     icon: "approved" },
+  used:    { label: "مُستخدم",         tone: "neutral",  icon: "approved" },
+  expired: { label: "منتهي الصلاحية",  tone: "rejected", icon: "flag" },
+};
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  return new Date(iso).toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
 }
 
 /**
@@ -39,43 +41,31 @@ export function InvitationCodeCard({ candidateId, candidateEmail, invitation }: 
   const showCode = invitation?.code && invitation.status === "active";
 
   return (
-    <section
-      className="bg-white rounded-2xl border p-6 mb-6 shadow-sm"
-      style={{ borderColor: "var(--color-border)" }}
+    <Card
       aria-labelledby="invitation-code-title"
+      title={
+        <span id="invitation-code-title" className="inline-flex items-center gap-2">
+          <Icon name="privacy" size={24} label={false} style={{ color: "var(--green-700)" }} />
+          رمز الدعوة
+        </span>
+      }
+      description="يدخل به المرشح إلى بوابته من صفحة «دخول المرشح». يبقى هنا دائماً ويمكن نسخه وإرساله بأي وسيلة."
+      action={st && <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>}
     >
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "var(--color-gold-muted)" }}>
-            <KeyRound className="w-5 h-5" style={{ color: "var(--color-gold-dark)" }} />
-          </div>
-          <div>
-            <h2 id="invitation-code-title" className="font-bold text-base" style={{ color: "var(--color-dark)" }}>
-              رمز الدعوة
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-              يدخل به المرشح إلى بوابته من صفحة «دخول المرشح». يبقى هنا دائماً ويمكن نسخه وإرساله بأي وسيلة.
-            </p>
-          </div>
-        </div>
-        {st && (
-          <span className={`badge ${st.cls} inline-flex items-center gap-1`}>
-            <st.Icon className="w-3.5 h-3.5" />
-            {st.label}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-5 flex items-stretch gap-3 flex-wrap">
+      <div className="flex items-stretch gap-4 flex-wrap">
         <div
-          dir="ltr"
-          className="flex-1 min-w-[240px] px-4 py-3 rounded-xl border font-mono text-sm tracking-wider break-all select-all"
+          dir={showCode ? "ltr" : "rtl"}
+          className={`flex-1 min-w-[240px] break-all ${showCode ? "select-all" : ""}`}
           style={{
-            background: showCode ? "var(--color-surface-alt)" : "var(--color-beige)",
-            borderColor: showCode ? "var(--color-gold)" : "var(--color-border)",
-            color: showCode ? "var(--color-primary-dark)" : "var(--color-text-muted)",
-            borderStyle: showCode ? "solid" : "dashed",
+            padding: "var(--space-16)",
+            borderRadius: "var(--radius-12)",
+            border: `1.5px ${showCode ? "solid" : "dashed"} ${showCode ? "var(--gold-500)" : "var(--border-100)"}`,
+            background: "var(--surface-000)",
+            color: showCode ? "var(--ink)" : "var(--ink-muted)",
+            fontFamily: showCode ? "var(--font-latin)" : undefined,
+            fontSize: showCode ? 18 : 14,
+            fontWeight: showCode ? 600 : 400,
+            letterSpacing: showCode ? "0.08em" : undefined,
           }}
         >
           {showCode
@@ -91,11 +81,11 @@ export function InvitationCodeCard({ candidateId, candidateEmail, invitation }: 
         {showCode && <CopyButton value={invitation!.code!} label="نسخ الرمز" className="self-center" />}
       </div>
 
-      <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-4 text-xs" style={{ color: "var(--color-text-muted)" }}>
+      <div className="mt-4 flex items-center justify-between flex-wrap gap-4">
+        <div className="ds-caption flex items-center gap-4" style={{ color: "var(--ink-muted)" }}>
           {invitation && (
-            <span className="inline-flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-2">
+              <Icon name="calendar" size={16} label={false} />
               {invitation.status === "used" && invitation.usedAt
                 ? `استُخدم في ${fmt(invitation.usedAt)}`
                 : `صالح حتى ${fmt(invitation.expiresAt)}`}
@@ -108,6 +98,6 @@ export function InvitationCodeCard({ candidateId, candidateEmail, invitation }: 
           onSent={() => router.refresh()}
         />
       </div>
-    </section>
+    </Card>
   );
 }

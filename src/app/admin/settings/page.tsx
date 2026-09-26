@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { getTenantContext } from "@/infrastructure/tenant";
 import { getSmtpConfig } from "@/infrastructure/notifications/smtp-config.service";
+import { getInboxKitConfig } from "@/infrastructure/notifications/inboxkit-config.service";
 import { SmtpSettingsForm } from "@/components/admin/SmtpSettingsForm";
+import { InboxKitSettingsForm } from "@/components/admin/InboxKitSettingsForm";
+import { EmailProviderTabs } from "@/components/admin/EmailProviderTabs";
 
 export default async function AdminSettingsPage() {
   const ctx = await getTenantContext();
-  const existing = await getSmtpConfig(ctx!.organizationId);
+  const orgId = ctx!.organizationId;
+
+  const [existingSmtp, existingInboxKit] = await Promise.all([
+    getSmtpConfig(orgId),
+    getInboxKitConfig(orgId),
+  ]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8" dir="rtl">
@@ -19,15 +27,27 @@ export default async function AdminSettingsPage() {
         <p className="text-xs font-medium mb-1" style={{ color: "var(--color-primary)" }}>
           إعدادات النظام
         </p>
-        <h1 className="text-2xl font-bold text-heading" style={{ color: "var(--color-dark)" }}>
-          إعداد خادم البريد الإلكتروني
+        <h1 className="text-2xl font-bold" style={{ color: "var(--color-dark)" }}>
+          إعداد البريد الإلكتروني
         </h1>
         <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
-          أدخل بيانات SMTP الخاص بجهتك لتفعيل إرسال رموز الدعوة والإشعارات تلقائياً
+          اختر طريقة إرسال رموز الدعوة والإشعارات للمرشحين
         </p>
       </div>
 
-      <SmtpSettingsForm existing={existing} />
+      <EmailProviderTabs
+        defaultTab={existingInboxKit ? "inboxkit" : "smtp"}
+        smtpForm={<SmtpSettingsForm existing={existingSmtp} />}
+        inboxKitForm={
+          <InboxKitSettingsForm
+            existing={existingInboxKit ? {
+              workspaceId:  existingInboxKit.workspaceId,
+              mailboxEmail: existingInboxKit.mailboxEmail,
+              mailboxUid:   existingInboxKit.mailboxUid,
+            } : null}
+          />
+        }
+      />
     </div>
   );
 }

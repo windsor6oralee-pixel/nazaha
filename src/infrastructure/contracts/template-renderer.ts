@@ -78,5 +78,5 @@ export function hashContent(renderedHtml: string): string {
 }
 
 export function formatArabicDate(d: Date): string {
-  return d.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
 }

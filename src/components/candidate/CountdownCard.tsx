@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
+import { Progress } from "@/components/ui/Progress";
 
 interface CountdownCardProps {
   firstName: string;
@@ -20,7 +22,7 @@ export function CountdownCard({ firstName, startDate, acceptanceDate }: Countdow
   const elapsed = totalDays - remainingDays;
   const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalDays) * 100)));
 
-  const startDateLabel = new Date(startDate).toLocaleDateString("ar-SA", {
+  const startDateLabel = new Date(startDate).toLocaleDateString("ar-SA-u-nu-latn", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -30,36 +32,21 @@ export function CountdownCard({ firstName, startDate, acceptanceDate }: Countdow
   if (remainingDays < 0) return null;
 
   return (
-    <div
-      className="rounded-2xl border p-5"
-      style={{ background: "white", borderColor: "var(--color-border)" }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <CalendarDays className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-primary)" }} />
-        <p className="text-xs font-bold" style={{ color: "var(--color-dark)" }}>
+    <Card>
+      <div className="flex items-center gap-2" style={{ marginBottom: "var(--space-16)" }}>
+        <Icon name="calendar" size={24} label={false} className="text-green-700" />
+        <p className="text-ink" style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
           {remainingDays === 0
             ? `${firstName}، اليوم هو يوم مباشرتك!`
             : `${firstName}، ${remainingDays} ${remainingDays === 1 ? "يوم" : "أيام"} حتى المباشرة`}
         </p>
       </div>
 
-      {/* Progress bar */}
-      <div
-        className="w-full rounded-full overflow-hidden mb-3"
-        style={{ height: 6, background: "var(--color-border)" }}
-      >
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${progress}%`,
-            background: "linear-gradient(90deg, var(--color-primary) 0%, var(--color-gold) 100%)",
-          }}
-        />
-      </div>
+      <Progress value={progress} showValue={false} />
 
-      <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+      <p className="text-ink-muted" style={{ margin: "var(--space-16) 0 0", fontSize: 13 }}>
         {startDateLabel}
       </p>
-    </div>
+    </Card>
   );
 }

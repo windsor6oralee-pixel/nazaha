@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search, UserPlus } from "lucide-react";
-import Link from "next/link";
-import { CandidateRow } from "@/components/hr/CandidateRow";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card, EmptyState } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
+import { CandidatesTable } from "@/components/hr/CandidateRow";
 import type { Candidate, ApplicationStatus } from "@/types";
 
 const filterOptions: { label: string; value: ApplicationStatus | "all" }[] = [
@@ -34,87 +35,60 @@ export function CandidatesClient({ candidates }: Props) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+    <div className="nz-page">
+      <div className="nz-page__head">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--color-dark)" }}>
-            إدارة المرشحين
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>
-            {candidates.length} مرشح في المنصة
+          <h1 className="nz-page__title">إدارة المرشحين</h1>
+          <p className="nz-page__lead">
+            <span className="font-numeric">{candidates.length}</span> مرشح في المنصة
           </p>
         </div>
-        <Link
-          href="/hr/candidates/new"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-          style={{
-            background: "var(--color-primary)",
-            color: "white",
-            fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-          }}
-        >
-          <UserPlus className="w-4 h-4" />
-          إضافة مرشح جديد
-        </Link>
+        <div className="flex items-center gap-2">
+          <ButtonLink href="/hr/candidates/import" icon="candidates" variant="secondary">
+            استيراد جماعي
+          </ButtonLink>
+          <ButtonLink href="/hr/candidates/new" icon="candidates">
+            إضافة مرشح جديد
+          </ButtonLink>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4"
-          style={{ color: "var(--color-text-muted)" }} />
-        <input
-          type="text"
+      {/* Search + filter */}
+      <div className="grid gap-4 sm:grid-cols-[1fr_280px]">
+        <Input
+          label="البحث"
+          icon="search"
+          type="search"
           placeholder="ابحث بالاسم، المسمى الوظيفي، أو الإدارة..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pr-10 pl-4 py-2.5 text-sm border rounded-xl outline-none transition-all bg-white"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          onFocus={(e) => { e.target.style.borderColor = "var(--color-primary)"; }}
-          onBlur={(e) => { e.target.style.borderColor = "var(--color-border)"; }}
         />
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {filterOptions.map((opt) => {
-          const count = opt.value === "all"
-            ? candidates.length
-            : candidates.filter((c) => c.status === opt.value).length;
-          const active = filter === opt.value;
-          return (
-            <button
-              key={opt.value}
-              onClick={() => setFilter(opt.value)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
-              style={{
-                background: active ? "var(--color-primary)" : "white",
-                color: active ? "white" : "var(--color-text-muted)",
-                borderColor: active ? "var(--color-primary)" : "var(--color-border)",
-              }}
-            >
-              {opt.label}
-              <span className="mr-1 opacity-60">({count})</span>
-            </button>
-          );
-        })}
+        <Select
+          label="تصفية حسب الحالة"
+          icon="filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as ApplicationStatus | "all")}
+        >
+          {filterOptions.map((opt) => {
+            const count = opt.value === "all"
+              ? candidates.length
+              : candidates.filter((c) => c.status === opt.value).length;
+            return (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} ({count})
+              </option>
+            );
+          })}
+        </Select>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden"
-        style={{ borderColor: "var(--color-border)" }}>
-        <div className="divide-y" style={{ borderColor: "var(--color-beige-dark)" }}>
-          {filtered.length > 0 ? (
-            filtered.map((candidate) => (
-              <CandidateRow key={candidate.id} candidate={candidate} />
-            ))
-          ) : (
-            <div className="py-12 text-center text-sm"
-              style={{ color: "var(--color-text-muted)" }}>
-              لا توجد نتائج مطابقة للبحث
-            </div>
-          )}
-        </div>
-      </div>
+      <Card flush animate={false}>
+        <CandidatesTable
+          candidates={filtered}
+          empty={<EmptyState icon="search" title="لا توجد نتائج مطابقة للبحث" />}
+        />
+      </Card>
     </div>
   );
 }

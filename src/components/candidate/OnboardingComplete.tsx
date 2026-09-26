@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, Star } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   candidateName: string;
@@ -9,17 +9,10 @@ interface Props {
   organization: string;
 }
 
-// Confetti particle — pure CSS animation, no external lib
+// Confetti particle — pure CSS animation, no external lib (reduced motion hides it in globals.css)
 function Confetti() {
   const particles = Array.from({ length: 28 });
-  const colors = [
-    "var(--color-gold)",
-    "var(--color-primary)",
-    "#A8D5B8",
-    "#F9C74F",
-    "#90E0EF",
-    "#FFB4A2",
-  ];
+  const colors = ["var(--green-700)", "var(--gold-500)", "var(--gold-200)"];
   return (
     <div className="confetti-container" aria-hidden>
       {particles.map((_, i) => (
@@ -33,7 +26,7 @@ function Confetti() {
             animationDuration: `${1.2 + (i % 4) * 0.3}s`,
             width: i % 3 === 0 ? 10 : 7,
             height: i % 3 === 0 ? 10 : 14,
-            borderRadius: i % 2 === 0 ? "50%" : 2,
+            borderRadius: i % 2 === 0 ? "var(--radius-full)" : 2,
           }}
         />
       ))}
@@ -51,51 +44,53 @@ export function OnboardingComplete({ candidateName, jobTitle, organization }: Pr
   }, []);
 
   return (
-    <div
-      className={`relative rounded-2xl overflow-hidden mb-6 transition-all duration-700 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-      style={{ background: "linear-gradient(135deg, #195C30 0%, var(--color-primary) 60%, #2D7A50 100%)" }}
+    <section
+      className="relative overflow-hidden rounded-20 bg-green-900 text-ink-invert"
+      style={{
+        opacity: show ? 1 : 0,
+        transform: show ? "none" : "translateY(16px)",
+        transition: "opacity var(--motion-slow) var(--ease-enter), transform var(--motion-slow) var(--ease-enter)",
+      }}
     >
       <Confetti />
 
-      <div className="relative z-10 px-6 py-8 text-center">
+      <div className="relative text-center" style={{ zIndex: 1, padding: "var(--space-48) var(--space-24)" }}>
         {/* Success icon */}
         <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{ background: "rgba(255,255,255,0.15)", border: "2px solid rgba(255,255,255,0.3)" }}
+          className="flex items-center justify-center mx-auto text-gold-500"
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: "var(--radius-full)",
+            border: "2px solid var(--gold-500)",
+            marginBottom: "var(--space-24)",
+          }}
         >
-          <CheckCircle className="w-10 h-10 text-white" />
+          <Icon name="approved" size={48} label={false} />
         </div>
 
-        {/* Stars */}
-        <div className="flex justify-center gap-1.5 mb-3">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Star
-              key={i}
-              className="w-5 h-5"
-              fill="var(--color-gold)"
-              style={{ color: "var(--color-gold)", animationDelay: `${i * 0.12}s` }}
-            />
-          ))}
-        </div>
-
-        <h2 className="text-2xl font-bold text-white mb-2">
-          مبروك يا {candidateName.split(" ")[0]}! 🎉
+        <h2 className="ds-heading" style={{ margin: "0 0 var(--space-8)", color: "var(--ink-invert)" }}>
+          مبروك يا {candidateName.split(" ")[0]}!
         </h2>
-        <p className="text-sm mb-1" style={{ color: "#C8E8D4" }}>
-          أتممت جميع متطلبات التأهيل بنجاح
-        </p>
-        <p className="text-sm font-medium" style={{ color: "#A8D5B8" }}>
+        <p style={{ margin: 0, opacity: 0.85 }}>أتممت جميع متطلبات التأهيل بنجاح</p>
+        <p style={{ margin: 0, fontWeight: 500, opacity: 0.85 }}>
           {jobTitle} · {organization}
         </p>
 
         <div
-          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold"
-          style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }}
+          className="inline-flex items-center gap-2 bg-gold-200 text-ink"
+          style={{
+            marginTop: "var(--space-24)",
+            padding: "var(--space-8) var(--space-16)",
+            borderRadius: "var(--radius-full)",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
         >
-          <CheckCircle className="w-4 h-4" />
+          <Icon name="approved" size={16} label={false} />
           جاهز لليوم الأول
         </div>
       </div>
-    </div>
+    </section>
   );
 }

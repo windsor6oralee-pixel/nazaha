@@ -96,7 +96,7 @@ export function contractSigned(data: {
       <div class="highlight">
         <p><strong>المرشح:</strong> ${data.candidateName}</p>
         <p><strong>المسمى الوظيفي:</strong> ${data.jobTitle}</p>
-        <p><strong>وقت التوقيع:</strong> ${new Date(data.signedAt).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" })}</p>
+        <p><strong>وقت التوقيع:</strong> ${new Date(data.signedAt).toLocaleString("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short" })}</p>
       </div>
       <p>يمكنك الآن بدء إجراءات الاستعداد للمباشرة والتواصل مع المرشح عبر منصة نزاهة.</p>
     `),

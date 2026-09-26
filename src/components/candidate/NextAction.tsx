@@ -1,10 +1,22 @@
-import { ArrowLeft, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import type { Candidate } from "@/types";
+import { Alert } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 
 interface NextActionProps {
   candidate: Candidate;
   firstName: string;
+}
+
+function DocumentsLink({ children }: { children: string }) {
+  return (
+    <div style={{ marginTop: "var(--space-16)" }}>
+      <ButtonLink href="/candidate/documents" variant="secondary">
+        {children}
+        <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
+      </ButtonLink>
+    </div>
+  );
 }
 
 export function NextAction({ candidate, firstName }: NextActionProps) {
@@ -16,81 +28,40 @@ export function NextAction({ candidate, firstName }: NextActionProps) {
 
   if (rejectedDocs.length > 0) {
     return (
-      <div className="rounded-2xl border p-5" style={{ background: "var(--color-error-bg)", borderColor: "rgba(168,58,48,0.25)" }}>
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "var(--color-error)" }} />
-          <div className="flex-1">
-            <p className="font-semibold text-sm" style={{ color: "var(--color-error)" }}>{firstName}، يحتاج إلى إجراء</p>
-            <p className="text-sm mt-1" style={{ color: "var(--color-error)" }}>
-              {rejectedDocs.length === 1
-                ? `مستند "${rejectedDocs[0].nameAr}" يحتاج إلى إعادة رفع.`
-                : `${rejectedDocs.length} مستندات مرفوضة تحتاج إلى إعادة رفع.`}
-            </p>
-            <Link
-              href="/candidate/documents"
-              className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium"
-              style={{ color: "var(--color-error)" }}
-            >
-              إصلاح المستندات
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert tone="error" title={`${firstName}، يحتاج إلى إجراء`}>
+        <p style={{ margin: 0 }}>
+          {rejectedDocs.length === 1
+            ? `مستند "${rejectedDocs[0].nameAr}" يحتاج إلى إعادة رفع.`
+            : `${rejectedDocs.length} مستندات مرفوضة تحتاج إلى إعادة رفع.`}
+        </p>
+        <DocumentsLink>إصلاح المستندات</DocumentsLink>
+      </Alert>
     );
   }
 
   if (missingDocs.length > 0) {
     return (
-      <div className="rounded-2xl border p-5" style={{ background: "var(--color-warning-bg)", borderColor: "rgba(196,143,30,0.25)" }}>
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: "var(--color-warning)" }} />
-          <div className="flex-1">
-            <p className="font-semibold text-sm" style={{ color: "var(--color-warning)" }}>{firstName}، الخطوة التالية</p>
-            <p className="text-sm mt-1" style={{ color: "var(--color-warning)" }}>
-              تبقى <strong>{missingDocs.length}</strong> {missingDocs.length === 1 ? "مستند" : "مستندات"} لرفعها لإكمال طلبك.
-            </p>
-            <Link
-              href="/candidate/documents"
-              className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium"
-              style={{ color: "var(--color-warning)" }}
-            >
-              رفع المستندات الآن
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Alert tone="gold" title={`${firstName}، الخطوة التالية`}>
+        <p style={{ margin: 0 }}>
+          تبقى <strong className="text-ink font-numeric">{missingDocs.length}</strong>{" "}
+          {missingDocs.length === 1 ? "مستند" : "مستندات"} لرفعها لإكمال طلبك.
+        </p>
+        <DocumentsLink>رفع المستندات الآن</DocumentsLink>
+      </Alert>
     );
   }
 
   if (pendingReview.length > 0) {
     return (
-      <div className="rounded-2xl border p-5" style={{ background: "#EBF2FB", borderColor: "rgba(29,95,168,0.25)" }}>
-        <div className="flex items-start gap-3">
-          <div className="w-5 h-5 mt-0.5 flex-shrink-0 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#1D5FA8", borderTopColor: "transparent" }} />
-          <div>
-            <p className="font-semibold text-sm" style={{ color: "#1D5FA8" }}>{firstName}، ملفك قيد المراجعة</p>
-            <p className="text-sm mt-1" style={{ color: "#1D5FA8" }}>
-              يراجع فريق الموارد البشرية مستنداتك حالياً. سنُشعرك فور اكتمال المراجعة.
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert tone="info" icon="pending" title={`${firstName}، ملفك قيد المراجعة`}>
+        يراجع فريق الموارد البشرية مستنداتك حالياً. سنُشعرك فور اكتمال المراجعة.
+      </Alert>
     );
   }
 
   return (
-    <div className="rounded-2xl border p-5" style={{ background: "var(--color-success-bg)", borderColor: "rgba(34,122,78,0.25)" }}>
-      <div className="flex items-start gap-3">
-        <div className="w-5 h-5 mt-0.5 flex-shrink-0 font-bold" style={{ color: "var(--color-success)" }}>✓</div>
-        <div>
-          <p className="font-semibold text-sm" style={{ color: "var(--color-success)" }}>أحسنت يا {firstName}!</p>
-          <p className="text-sm mt-1" style={{ color: "var(--color-success)" }}>
-            جميع المستندات مكتملة. في انتظار الخطوة التالية من فريق الموارد البشرية.
-          </p>
-        </div>
-      </div>
-    </div>
+    <Alert tone="success" title={`أحسنت يا ${firstName}!`}>
+      جميع المستندات مكتملة. في انتظار الخطوة التالية من فريق الموارد البشرية.
+    </Alert>
   );
 }

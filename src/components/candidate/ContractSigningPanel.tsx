@@ -2,15 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  FileText,
-  PenLine,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  ShieldCheck,
-  AlertCircle,
-} from "lucide-react";
+import { Alert, Card, EmptyState } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
+import { Progress } from "@/components/ui/Progress";
 
 interface Contract {
   id: string;
@@ -59,7 +56,7 @@ export function ContractSigningPanel({ contract, candidateNameAr }: Props) {
   }
 
   const genDate = contract.generatedAt
-    ? new Date(contract.generatedAt).toLocaleDateString("ar-SA", {
+    ? new Date(contract.generatedAt).toLocaleDateString("ar-SA-u-nu-latn", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -69,251 +66,126 @@ export function ContractSigningPanel({ contract, candidateNameAr }: Props) {
   // ── Signed state ──────────────────────────────────────────────────────────
   if (signed) {
     return (
-      <div
-        className="rounded-2xl border p-6 text-center"
-        style={{ borderColor: "#6EE7B7", background: "var(--color-success-bg)" }}
-      >
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ background: "rgba(34,122,78,0.12)" }}
-        >
-          <CheckCircle className="w-8 h-8" style={{ color: "var(--color-success)" }} />
+      <Card>
+        <div className="flex flex-col items-center text-center" style={{ gap: "var(--space-8)" }}>
+          <span className="text-success-500">
+            <Icon name="approved" size={48} label={false} />
+          </span>
+          <h3 className="ds-subheading text-ink" style={{ margin: "var(--space-8) 0 0" }}>
+            تم توقيع العقد بنجاح
+          </h3>
+          <p className="text-ink-muted" style={{ margin: 0 }}>{contract.nameAr}</p>
+          {signedAt && (
+            <p className="text-ink-muted" style={{ margin: 0, fontSize: 13 }}>
+              وُقِّع بتاريخ{" "}
+              <span className="font-numeric">
+                {new Date(signedAt).toLocaleDateString("ar-SA-u-nu-latn", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            </p>
+          )}
         </div>
-        <h3 className="font-bold text-lg mb-1" style={{ color: "var(--color-dark)" }}>
-          تم توقيع العقد بنجاح
-        </h3>
-        <p className="text-sm mb-3" style={{ color: "var(--color-text-muted)" }}>
-          {contract.nameAr}
-        </p>
-        {signedAt && (
-          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            وُقِّع بتاريخ{" "}
-            {new Date(signedAt).toLocaleDateString("ar-SA", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-        )}
-      </div>
+      </Card>
     );
   }
 
   // ── Signing UI ────────────────────────────────────────────────────────────
+  // Legal text and the signing form never animate (animate={false}).
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-6">
       {/* Contract details card */}
-      <div
-        className="rounded-2xl border p-5 flex items-start gap-4"
-        style={{ borderColor: "var(--color-border)", background: "white" }}
-      >
-        <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "var(--color-primary-muted)" }}
-        >
-          <FileText className="w-6 h-6" style={{ color: "var(--color-primary)" }} />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-base" style={{ color: "var(--color-dark)" }}>
-            {contract.nameAr}
-          </h3>
-          {genDate && (
-            <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-              صدر بتاريخ {genDate}
-            </p>
-          )}
-          <span
-            className="inline-block text-xs font-medium mt-2 px-2.5 py-1 rounded-full"
-            style={{
-              background: "var(--color-warning-bg)",
-              color: "var(--color-warning)",
-            }}
-          >
-            بانتظار توقيعك
-          </span>
-        </div>
-      </div>
+      <Card
+        animate={false}
+        title={contract.nameAr}
+        description={genDate ? <>صدر بتاريخ <span className="font-numeric">{genDate}</span></> : undefined}
+        action={<Badge tone="review">بانتظار توقيعك</Badge>}
+      />
 
       {/* Full contract text (frozen at generation) */}
-      <div
-        className="rounded-xl border p-5 max-h-[32rem] overflow-y-auto"
-        style={{ borderColor: "var(--color-border)", background: "white" }}
-      >
+      <Card animate={false} plain className="overflow-y-auto" style={{ maxHeight: "32rem" }}>
         {contract.renderedHtml ? (
           <div className="contract-body" dangerouslySetInnerHTML={{ __html: contract.renderedHtml }} />
         ) : (
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+          <p className="text-ink-muted" style={{ margin: 0 }}>
             نص العقد غير متوفر — يرجى التواصل مع الموارد البشرية.
           </p>
         )}
-      </div>
+      </Card>
 
       {/* Signing form */}
-      <form
-        onSubmit={handleSign}
-        className="rounded-2xl border p-6 space-y-5"
-        style={{ borderColor: "var(--color-border)", background: "white" }}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <PenLine className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
-          <h3 className="font-semibold text-sm" style={{ color: "var(--color-dark)" }}>
-            التوقيع الإلكتروني
-          </h3>
-        </div>
-
-        {/* Name field */}
-        <div>
-          <label
-            className="block text-sm font-medium mb-1.5"
-            style={{ color: "var(--color-dark)" }}
-          >
-            الاسم الكامل للتوقيع <span style={{ color: "var(--color-error)" }}>*</span>
-          </label>
-          <input
+      <Card animate={false} title="التوقيع الإلكتروني">
+        <form onSubmit={handleSign} className="flex flex-col gap-6">
+          {/* Name field */}
+          <Input
+            label="الاسم الكامل للتوقيع"
+            required
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            required
             placeholder="أدخل اسمك الكامل كما في الهوية"
-            className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
-            style={{
-              borderColor: "var(--color-border)",
-              background: "var(--color-surface)",
-              color: "var(--color-text)",
-              fontFamily: "'Noto Kufi Arabic', sans-serif",
-              fontSize: "1rem",
-              fontWeight: 600,
-              letterSpacing: "0.04em",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "var(--color-gold)";
-              e.target.style.boxShadow = "0 0 0 3px var(--color-gold-muted)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "var(--color-border)";
-              e.target.style.boxShadow = "none";
-            }}
+            hint="سيُسجَّل هذا الاسم كتوقيعك الرسمي على العقد"
           />
-          <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
-            سيُسجَّل هذا الاسم كتوقيعك الرسمي على العقد
-          </p>
-        </div>
 
-        {/* Signature preview */}
-        {fullName.trim() && (
-          <div
-            className="px-4 py-3 rounded-xl border text-center"
-            style={{
-              borderColor: "var(--color-primary)",
-              background: "var(--color-primary-muted)",
-            }}
-          >
-            <p
-              className="text-lg"
-              style={{
-                color: "var(--color-primary-dark)",
-                fontFamily: "'Noto Kufi Arabic', sans-serif",
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-              }}
+          {/* Signature preview */}
+          {fullName.trim() && (
+            <div
+              className="rounded-12 border bg-surface-000 text-center"
+              style={{ borderColor: "var(--gold-500)", padding: "var(--space-16)" }}
             >
-              {fullName}
-            </p>
-            <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-              معاينة التوقيع
-            </p>
-          </div>
-        )}
+              <p
+                className="text-ink"
+                style={{ margin: 0, fontFamily: "var(--font-kufi)", fontSize: 20, fontWeight: 700, letterSpacing: "0.06em" }}
+              >
+                {fullName}
+              </p>
+              <p className="text-ink-muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+                معاينة التوقيع
+              </p>
+            </div>
+          )}
 
-        {/* Confirmation checkbox */}
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-0.5 flex-shrink-0">
+          {/* Confirmation checkbox */}
+          <label className="flex items-start gap-4 cursor-pointer" style={{ minHeight: 44 }}>
             <input
               type="checkbox"
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
-              className="sr-only"
+              style={{ width: 20, height: 20, marginTop: 4, flex: "none", accentColor: "var(--green-700)" }}
             />
-            <div
-              className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
-              style={{
-                borderColor: confirmed ? "var(--color-primary)" : "var(--color-border)",
-                background: confirmed ? "var(--color-primary)" : "white",
-              }}
-            >
-              {confirmed && (
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
-                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </div>
-          </div>
-          <span className="text-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
-            أقر بأنني قرأت جميع بنود العقد وأفهمها وأوافق عليها، وأن توقيعي الإلكتروني يُعدّ ملزماً
-            قانونياً ويعادل التوقيع الخطي وفق نظام التعاملات الإلكترونية في المملكة العربية السعودية.
-          </span>
-        </label>
+            <span className="text-ink-muted" style={{ fontSize: 15, lineHeight: 1.7 }}>
+              أقر بأنني قرأت جميع بنود العقد وأفهمها وأوافق عليها، وأن توقيعي الإلكتروني يُعدّ ملزماً
+              قانونياً ويعادل التوقيع الخطي وفق نظام التعاملات الإلكترونية في المملكة العربية السعودية.
+            </span>
+          </label>
 
-        {/* Error */}
-        {error && (
-          <div
-            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-            style={{
-              background: "var(--color-error-bg)",
-              color: "var(--color-error)",
-              border: "1px solid rgba(168,58,48,0.25)",
-            }}
-          >
-            <XCircle className="w-4 h-4 flex-shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isPending || !confirmed || !fullName.trim()}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all"
-          style={{
-            background:
-              isPending || !confirmed || !fullName.trim()
-                ? "var(--color-border)"
-                : "var(--color-primary)",
-            color: isPending || !confirmed || !fullName.trim() ? "var(--color-text-muted)" : "white",
-            cursor: isPending || !confirmed || !fullName.trim() ? "not-allowed" : "pointer",
-            fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-            minHeight: 48,
-          }}
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              جارٍ تسجيل التوقيع...
-            </>
-          ) : (
-            <>
-              <PenLine className="w-4 h-4" />
-              توقيع العقد إلكترونياً
-            </>
+          {/* Error */}
+          {error && (
+            <Alert tone="error" icon="close">
+              {error}
+            </Alert>
           )}
-        </button>
-      </form>
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            block
+            icon="justice"
+            loading={isPending}
+            disabled={!confirmed || !fullName.trim()}
+          >
+            {isPending ? "جارٍ تسجيل التوقيع..." : "توقيع العقد إلكترونياً"}
+          </Button>
+        </form>
+      </Card>
 
       {/* Legal note */}
-      <div
-        className="flex items-start gap-3 px-4 py-3 rounded-xl text-xs"
-        style={{
-          background: "var(--color-surface-alt)",
-          borderColor: "var(--color-border)",
-          color: "var(--color-text-muted)",
-        }}
-      >
-        <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--color-primary)" }} />
-        <p>
-          التوقيع الإلكتروني معتمد وفق نظام التعاملات الإلكترونية في المملكة العربية السعودية
-          ويُعادل التوقيع الورقي من الناحية القانونية. يُحفظ سجل التوقيع مع بيانات الجهاز والتوقيت.
-        </p>
-      </div>
+      <Alert tone="info" icon="integrity">
+        التوقيع الإلكتروني معتمد وفق نظام التعاملات الإلكترونية في المملكة العربية السعودية
+        ويُعادل التوقيع الورقي من الناحية القانونية. يُحفظ سجل التوقيع مع بيانات الجهاز والتوقيت.
+      </Alert>
     </div>
   );
 }
@@ -327,93 +199,55 @@ export function ContractLockedPanel({
   totalRequired: number;
 }) {
   return (
-    <div
-      className="rounded-2xl border p-6"
-      style={{ borderColor: "var(--color-border)", background: "white" }}
-    >
-      <div
-        className="flex items-center gap-3 p-4 rounded-xl mb-5"
-        style={{ background: "var(--color-warning-bg)" }}
-      >
-        <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: "var(--color-warning)" }} />
-        <div>
-          <p className="font-semibold text-sm" style={{ color: "var(--color-dark)" }}>
-            في انتظار اكتمال المستندات
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-            ستُفتح هذه المرحلة بعد اعتماد جميع مستنداتك المطلوبة
-          </p>
-        </div>
-      </div>
+    <Card>
+      <Alert tone="gold" icon="pending" title="في انتظار اكتمال المستندات">
+        ستُفتح هذه المرحلة بعد اعتماد جميع مستنداتك المطلوبة
+      </Alert>
 
       {/* Progress */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>
+      <div style={{ margin: "var(--space-24) 0" }}>
+        <div className="nz-progress__row">
           <span>المستندات المعتمدة</span>
-          <span className="font-semibold" style={{ color: "var(--color-dark)" }}>
+          <span className="nz-progress__val">
             {approvedCount} / {totalRequired}
           </span>
         </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--color-border)" }}>
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${totalRequired > 0 ? (approvedCount / totalRequired) * 100 : 0}%`,
-              background: "linear-gradient(90deg, var(--color-primary) 0%, var(--color-gold) 100%)",
-            }}
-          />
-        </div>
+        <Progress
+          value={totalRequired > 0 ? (approvedCount / totalRequired) * 100 : 0}
+          showValue={false}
+        />
       </div>
 
       {/* Placeholder contracts */}
-      <div className="space-y-3 opacity-50 select-none">
+      <div className="flex flex-col gap-2 select-none" style={{ opacity: 0.5 }}>
         {["عقد العمل", "إقرار السرية"].map((name) => (
           <div
             key={name}
-            className="flex items-center gap-3 p-4 rounded-xl border"
-            style={{ borderColor: "var(--color-border)" }}
+            className="flex items-center gap-4 rounded-12 border border-border-100 bg-surface-000"
+            style={{ padding: "var(--space-16)" }}
           >
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "var(--color-surface-alt)" }}
+              className="flex items-center justify-center rounded-8 bg-surface-100 text-ink-muted"
+              style={{ width: 40, height: 40, flex: "none" }}
             >
-              <FileText className="w-5 h-5" style={{ color: "var(--color-text-muted)" }} />
+              <Icon name="documents" size={24} label={false} />
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>{name}</p>
-            </div>
-            <span
-              className="text-xs px-2.5 py-1 rounded-full"
-              style={{ background: "var(--color-surface-alt)", color: "var(--color-text-muted)" }}
-            >
-              مقفل
-            </span>
+            <p className="flex-1 text-ink" style={{ margin: 0, fontWeight: 500 }}>{name}</p>
+            <Badge tone="neutral" icon="privacy">مقفل</Badge>
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
 // ── Waiting state (docs approved, no contract yet) ────────────────────────────
 export function ContractWaitingPanel() {
   return (
-    <div
-      className="rounded-2xl border p-8 text-center"
-      style={{ borderColor: "var(--color-border)", background: "white" }}
-    >
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-        style={{ background: "var(--color-primary-muted)" }}
-      >
-        <FileText className="w-7 h-7" style={{ color: "var(--color-primary)" }} />
-      </div>
-      <h3 className="font-bold mb-2" style={{ color: "var(--color-dark)" }}>
-        جارٍ إعداد العقد
-      </h3>
-      <p className="text-sm" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
+    <Card>
+      <EmptyState icon="documents" title="جارٍ إعداد العقد">
         تمت الموافقة على مستنداتك. يقوم فريق الموارد البشرية بإعداد العقد وسيتم إشعارك فور جاهزيته.
-      </p>
-    </div>
+      </EmptyState>
+    </Card>
   );
 }

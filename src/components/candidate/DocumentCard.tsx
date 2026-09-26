@@ -2,17 +2,10 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Upload,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertCircle,
-  FileText,
-  Loader2,
-} from "lucide-react";
-import { getDocStatusLabel, getDocStatusStyle } from "@/lib/utils";
+import { getDocStatusLabel, getDocStatusTone } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import type { Document } from "@/types";
 
 interface DocumentCardProps {
@@ -22,32 +15,7 @@ interface DocumentCardProps {
   candidateFirstName?: string;
 }
 
-const statusIcons = {
-  not_uploaded: Upload,
-  uploaded: Clock,
-  under_review: Clock,
-  approved: CheckCircle,
-  rejected: XCircle,
-};
-
-const statusBorder: Record<Document["status"], string> = {
-  not_uploaded: "var(--color-border)",
-  uploaded: "var(--color-border)",
-  under_review: "#FCD34D",
-  approved: "#6EE7B7",
-  rejected: "#FCA5A5",
-};
-
-const statusBg: Record<Document["status"], string> = {
-  not_uploaded: "white",
-  uploaded: "var(--color-surface-alt)",
-  under_review: "var(--color-warning-bg)",
-  approved: "var(--color-success-bg)",
-  rejected: "var(--color-error-bg)",
-};
-
 export function DocumentCard({ document: doc, allowUpload = true, candidateFirstName }: DocumentCardProps) {
-  const Icon = statusIcons[doc.status];
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -86,64 +54,39 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
   }
 
   return (
-    <div
-      className="p-4 rounded-xl border transition-all"
-      style={{
-        borderColor: statusBorder[doc.status],
-        background: statusBg[doc.status],
-      }}
-    >
-      <div className="flex items-start gap-3 flex-wrap sm:flex-nowrap">
+    <div className="rounded-12 border border-border-100 bg-surface-000" style={{ padding: "var(--space-16)" }}>
+      <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
         {/* Icon */}
         <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            background:
-              doc.status === "approved"
-                ? "var(--color-success-bg)"
-                : doc.status === "rejected"
-                ? "var(--color-error-bg)"
-                : "var(--color-beige-dark)",
-          }}
+          className="flex items-center justify-center rounded-8 bg-surface-100 text-ink-muted"
+          style={{ width: 40, height: 40, flex: "none" }}
         >
-          <FileText
-            className="w-5 h-5"
-            style={{
-              color:
-                doc.status === "approved"
-                  ? "var(--color-success)"
-                  : doc.status === "rejected"
-                  ? "var(--color-error)"
-                  : "var(--color-text-muted)",
-            }}
-          />
+          <Icon name="documents" size={24} label={false} />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>
+            <p className="text-ink" style={{ margin: 0, fontWeight: 500 }}>
               {doc.nameAr}
             </p>
             {doc.required && (
-              <span className="text-xs font-medium" style={{ color: "var(--color-error)" }}>
-                * مطلوب
+              <span className="text-ink-muted" style={{ fontSize: 13 }}>
+                <span className="text-danger-500" aria-hidden>*</span> مطلوب
               </span>
             )}
           </div>
 
-          <div className="mt-1">
-            <Badge style={getDocStatusStyle(doc.status)}>
-              <Icon className="w-3 h-3 ml-1" />
+          <div style={{ marginTop: "var(--space-8)" }}>
+            <Badge tone={getDocStatusTone(doc.status)} icon={doc.status === "not_uploaded" ? "upload" : undefined}>
               {getDocStatusLabel(doc.status)}
             </Badge>
           </div>
 
           {doc.rejectionReason && (
-            <div className="mt-2 flex items-start gap-1.5 text-xs"
-              style={{ color: "var(--color-error)" }}>
-              <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-              <p>
+            <div className="flex items-start gap-2 text-danger-500" style={{ marginTop: "var(--space-8)", fontSize: 13 }}>
+              <Icon name="flag" size={16} label={false} style={{ marginTop: 3 }} />
+              <p style={{ margin: 0 }}>
                 {candidateFirstName ? `${candidateFirstName}، ` : ""}
                 {doc.rejectionReason}
               </p>
@@ -151,16 +94,15 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
           )}
 
           {uploadError && (
-            <div className="mt-2 flex items-start gap-1.5 text-xs"
-              style={{ color: "var(--color-error)" }}>
-              <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-              <p>{uploadError}</p>
+            <div className="flex items-start gap-2 text-danger-500" style={{ marginTop: "var(--space-8)", fontSize: 13 }}>
+              <Icon name="flag" size={16} label={false} style={{ marginTop: 3 }} />
+              <p style={{ margin: 0 }}>{uploadError}</p>
             </div>
           )}
 
           {doc.uploadedAt && doc.status !== "rejected" && (
-            <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-              رُفع بتاريخ {new Date(doc.uploadedAt).toLocaleDateString("ar-SA")}
+            <p className="text-ink-muted" style={{ margin: "var(--space-8) 0 0", fontSize: 13 }}>
+              رُفع بتاريخ <span className="font-numeric">{new Date(doc.uploadedAt).toLocaleDateString("ar-SA-u-nu-latn")}</span>
             </p>
           )}
         </div>
@@ -177,31 +119,16 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
           />
         )}
         {canUpload && (
-          <button
+          <Button
+            variant="secondary"
+            icon="upload"
+            loading={isPending}
             onClick={() => inputRef.current?.click()}
-            disabled={isPending}
-            className="w-full sm:w-auto sm:flex-shrink-0 flex items-center justify-center gap-1.5 text-sm font-medium border px-4 rounded-xl transition-colors"
-            style={{
-              background: "var(--color-primary-muted)",
-              color: "var(--color-primary)",
-              borderColor: "var(--color-primary)",
-              opacity: isPending ? 0.6 : 1,
-              cursor: isPending ? "not-allowed" : "pointer",
-              minHeight: 44,
-            }}
+            className="w-full sm:w-auto"
+            style={{ flex: "none" }}
           >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                جارٍ الرفع...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                {doc.status === "rejected" ? "إعادة الرفع" : "رفع المستند"}
-              </>
-            )}
-          </button>
+            {isPending ? "جارٍ الرفع..." : doc.status === "rejected" ? "إعادة رفع المستند" : "رفع المستند"}
+          </Button>
         )}
       </div>
     </div>

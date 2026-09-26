@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FilePlus, CheckCircle, Loader2, AlertCircle, FileSignature } from "lucide-react";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Alert, Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 
 interface HRContractSectionProps {
   applicationId: string;
@@ -15,6 +18,14 @@ const STATUS_LABELS: Record<string, string> = {
   FULLY_SIGNED: "موقَّع",
   EXPIRED: "منتهي الصلاحية",
   CANCELLED: "ملغى",
+};
+
+const CONTRACT_TONE: Record<string, BadgeTone> = {
+  DRAFT: "neutral",
+  PENDING_SIGNATURE: "review",
+  FULLY_SIGNED: "done",
+  EXPIRED: "rejected",
+  CANCELLED: "rejected",
 };
 
 export function HRContractSection({ applicationId, existingContract }: HRContractSectionProps) {
@@ -39,90 +50,60 @@ export function HRContractSection({ applicationId, existingContract }: HRContrac
     });
   }
 
-  return (
-    <div
-      className="mt-4 bg-white rounded-2xl border p-5 shadow-sm"
-      style={{ borderColor: "var(--color-border)" }}
-    >
-      <h3 className="font-bold text-sm mb-3" style={{ color: "var(--color-dark)" }}>
-        العقد الوظيفي
-      </h3>
+  const signed = existingContract?.status === "FULLY_SIGNED";
 
+  return (
+    <Card title="العقد الوظيفي" className="mt-6">
       {existingContract ? (
         <div
-          className="rounded-xl p-4 flex items-start gap-3"
+          className="flex items-start gap-4"
           style={{
-            background:
-              existingContract.status === "FULLY_SIGNED"
-                ? "var(--color-success-bg)"
-                : "var(--color-beige)",
-            borderLeft: `4px solid ${existingContract.status === "FULLY_SIGNED" ? "#6EE7B7" : "var(--color-gold)"}`,
+            padding: "var(--space-16)",
+            borderRadius: "var(--radius-12)",
+            border: "1px solid var(--border-100)",
+            background: "var(--surface-000)",
           }}
         >
-          <FileSignature
-            className="w-5 h-5 flex-shrink-0 mt-0.5"
-            style={{
-              color:
-                existingContract.status === "FULLY_SIGNED"
-                  ? "var(--color-success)"
-                  : "var(--color-gold)",
-            }}
-          />
-          <div>
-            <p className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>
+          <Icon name="justice" size={24} label={false} style={{ color: "var(--green-700)" }} />
+          <div className="min-w-0 flex-1">
+            <p style={{ margin: 0, fontWeight: 600, color: "var(--ink)" }}>
               {existingContract.nameAr}
             </p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-              {STATUS_LABELS[existingContract.status] ?? existingContract.status} ·{" "}
-              {new Date(existingContract.generatedAt).toLocaleDateString("ar-SA")}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              <Badge tone={CONTRACT_TONE[existingContract.status] ?? "neutral"} icon={signed ? "approved" : undefined}>
+                {STATUS_LABELS[existingContract.status] ?? existingContract.status}
+              </Badge>
+              <span className="ds-caption font-numeric" style={{ color: "var(--ink-muted)" }}>
+                {new Date(existingContract.generatedAt).toLocaleDateString("ar-SA-u-nu-latn")}
+              </span>
+            </div>
             <a
               href={`/hr/contracts/${existingContract.id}`}
-              className="inline-block text-xs mt-2 hover:underline"
-              style={{ color: "var(--color-primary)" }}
+              className="nz-btn nz-btn--ghost nz-btn--sm mt-2"
+              style={{ minHeight: "var(--tap-target-min)", paddingInline: "var(--space-8)", marginInlineStart: "calc(var(--space-8) * -1)" }}
             >
-              عرض نص العقد وبيانات التوقيع ←
+              <Icon name="review" size={20} label={false} />
+              عرض نص العقد وبيانات التوقيع
             </a>
           </div>
-          {existingContract.status === "FULLY_SIGNED" && (
-            <CheckCircle className="w-4 h-4 mr-auto mt-0.5" style={{ color: "var(--color-success)" }} />
-          )}
         </div>
       ) : (
-        <>
-          <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>
+        <div className="flex flex-col gap-4">
+          <p className="ds-caption" style={{ margin: 0, color: "var(--ink-muted)" }}>
             لم يُنشأ عقد بعد. أنشئ العقد ليتمكن المرشح من مراجعته والتوقيع عليه.
           </p>
-          {error && (
-            <div
-              className="flex items-center gap-1.5 text-xs mb-2"
-              style={{ color: "var(--color-error)" }}
-            >
-              <AlertCircle className="w-3.5 h-3.5" />
-              {error}
-            </div>
-          )}
-          <button
+          {error && <Alert tone="error">{error}</Alert>}
+          <Button
+            variant="secondary"
+            block
+            icon="documents"
             onClick={generateContract}
-            disabled={isPending}
-            className="w-full flex items-center justify-center gap-2 text-sm font-medium border px-4 py-2.5 rounded-xl transition-colors"
-            style={{
-              color: "var(--color-primary)",
-              borderColor: "var(--color-primary)",
-              background: "var(--color-primary-muted)",
-              opacity: isPending ? 0.6 : 1,
-              cursor: isPending ? "not-allowed" : "pointer",
-            }}
+            loading={isPending}
           >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <FilePlus className="w-4 h-4" />
-            )}
             {isPending ? "جارٍ الإنشاء..." : "إنشاء عقد العمل"}
-          </button>
-        </>
+          </Button>
+        </div>
       )}
-    </div>
+    </Card>
   );
 }

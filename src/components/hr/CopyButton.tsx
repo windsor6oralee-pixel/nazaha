@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   value: string;
@@ -34,23 +36,16 @@ export function CopyButton({ value, label = "نسخ", copiedLabel = "تم الن
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="secondary"
       onClick={copy}
       aria-live="polite"
-      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold ${className}`}
-      style={{
-        background: copied ? "var(--color-success-bg)" : "var(--color-primary)",
-        color: copied ? "var(--color-success)" : "#fff",
-        transition: "background var(--motion-quick) var(--ease-standard), color var(--motion-quick) var(--ease-standard), transform var(--motion-fast) var(--ease-standard)",
-        cursor: "pointer",
-        minHeight: 36,
-        minWidth: 0,
-        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-      }}
+      className={className}
+      leading={copied
+        ? <Icon name="approved" size={20} label={false} style={{ color: "var(--success-500)" }} />
+        : <Copy size={20} strokeWidth={1.75} aria-hidden />}
     >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
       {copied ? copiedLabel : label}
-    </button>
+    </Button>
   );
 }

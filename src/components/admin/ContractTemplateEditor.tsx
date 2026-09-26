@@ -225,7 +225,7 @@ export function ContractTemplateEditor({ templates, placeholders }: Props) {
               <ul className="space-y-1.5">
                 {versions.map((v) => (
                   <li key={v.id} className="flex items-center justify-between text-[11px]" style={{ color: "var(--color-text-muted)" }}>
-                    <span>v{v.version} · {new Date(v.updatedAt).toLocaleDateString("ar-SA")}</span>
+                    <span>v{v.version} · {new Date(v.updatedAt).toLocaleDateString("ar-SA-u-nu-latn")}</span>
                     {v.isActive && <span className="px-1.5 py-0.5 rounded-full" style={{ background: "var(--color-success-bg)", color: "var(--color-success)" }}>نشط</span>}
                   </li>
                 ))}

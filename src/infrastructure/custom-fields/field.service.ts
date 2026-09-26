@@ -195,9 +195,9 @@ export function formatValue(def: Pick<FieldDefinition, "type">, value: string | 
     case "BOOLEAN": return value === "true" ? "نعم" : "لا";
     case "DATE": {
       const d = new Date(value + "T00:00:00Z");
-      return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+      return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "long", day: "numeric" });
     }
-    case "NUMBER": return Number(value).toLocaleString("ar-SA");
+    case "NUMBER": return Number(value).toLocaleString("ar-SA-u-nu-latn");
     default: return value;
   }
 }

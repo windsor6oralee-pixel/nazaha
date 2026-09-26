@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { CheckCircle, Loader2, Bell, Upload, Paperclip, Send } from "lucide-react";
+import { Card, EmptyState, Alert } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
 
 interface Message {
   id: string;
@@ -95,105 +98,73 @@ export function PreboardingHub({ applicationId, firstName }: PreboardingHubProps
 
   if (!channelReady) {
     return (
-      <div
-        className="rounded-2xl border p-6 text-center"
-        style={{ borderColor: "var(--color-border)", background: "white" }}
-      >
-        <Bell className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--color-text-muted)" }} />
-        <p className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>
-          {firstName}، لم تبدأ إجراءات المباشرة بعد
-        </p>
-        <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
+      <Card plain>
+        <EmptyState icon="notifications" title={`${firstName}، لم تبدأ إجراءات المباشرة بعد`}>
           سيتواصل معك فريق الموارد البشرية قريباً لتجهيز يومك الأول.
-        </p>
-      </div>
+        </EmptyState>
+      </Card>
     );
   }
 
   return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ borderColor: "var(--color-border)", background: "white" }}
-    >
+    <Card plain flush>
       {/* Header */}
       <div
-        className="px-5 py-3 flex items-center gap-2 border-b"
-        style={{ borderColor: "var(--color-border)", background: "var(--color-green-muted, #E8F3ED)" }}
+        className="flex items-center gap-2 border-b border-border-100 bg-surface-100"
+        style={{ padding: "var(--space-16) var(--space-24)" }}
       >
-        <div
-          className="w-2 h-2 rounded-full animate-pulse"
-          style={{ background: "var(--color-primary)" }}
+        <span
+          aria-hidden
+          className="bg-green-700"
+          style={{ width: 8, height: 8, borderRadius: "var(--radius-full)", flex: "none" }}
         />
-        <p className="text-sm font-bold" style={{ color: "var(--color-dark)" }}>
+        <p className="text-ink" style={{ margin: 0, fontWeight: 600 }}>
           قناة الاستعداد للمباشرة
         </p>
-        <p className="text-xs mr-auto" style={{ color: "var(--color-text-muted)" }}>
+        <p className="text-ink-muted" style={{ margin: 0, marginInlineStart: "auto", fontSize: 13 }}>
           الموارد البشرية
         </p>
       </div>
 
       {/* Pending Ping action */}
       {pendingPing && (
-        <div
-          className="mx-4 mt-4 p-4 rounded-xl border text-center"
-          style={{ borderColor: "var(--color-gold)", background: "#FFFBEB" }}
-        >
-          <Bell className="w-5 h-5 mx-auto mb-2" style={{ color: "var(--color-gold)" }} />
-          <p className="text-sm font-bold mb-1" style={{ color: "#92400E" }}>
-            {firstName}، طلب تأكيد جاهزيتك
-          </p>
-          <p className="text-xs mb-3" style={{ color: "#78350F" }}>
-            {pendingPing.content}
-          </p>
-          <button
-            onClick={() => respondToPing(pendingPing)}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-colors"
-            style={{ background: "var(--color-primary)" }}
-          >
-            <CheckCircle className="w-4 h-4" />
-            نعم، أنا جاهز
-          </button>
+        <div style={{ padding: "var(--space-16) var(--space-16) 0" }}>
+          <Alert tone="gold" icon="notifications" title={`${firstName}، طلب تأكيد جاهزيتك`}>
+            {pendingPing.content && <p style={{ margin: 0 }}>{pendingPing.content}</p>}
+            <div style={{ marginTop: "var(--space-16)" }}>
+              <Button icon="approved" onClick={() => respondToPing(pendingPing)} disabled={isPending}>
+                نعم، أنا جاهز
+              </Button>
+            </div>
+          </Alert>
         </div>
       )}
 
       {/* Pending File Request action */}
       {pendingFileRequest && (
-        <div
-          className="mx-4 mt-4 p-4 rounded-xl border"
-          style={{ borderColor: "var(--color-border)", background: "var(--color-beige)" }}
-        >
-          <div className="flex items-start gap-2">
-            <Paperclip className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "var(--color-primary)" }} />
-            <div className="flex-1">
-              <p className="text-xs font-bold mb-1" style={{ color: "var(--color-dark)" }}>
-                {firstName}، مطلوب منك رفع ملف
-              </p>
-              <p className="text-xs mb-2" style={{ color: "var(--color-text-muted)" }}>
-                {pendingFileRequest.content}
-              </p>
-              <input ref={fileRef} type="file" className="hidden" onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                // For now send as text message with filename — full upload wired via existing upload API
-                await sendMessage("FILE", `أرفق الملف: ${file.name}`, file.name);
-              }} />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={isPending}
-                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium"
-                style={{ borderColor: "var(--color-primary)", color: "var(--color-primary)", background: "var(--color-primary-muted)" }}
-              >
-                <Upload className="w-3.5 h-3.5" />
+        <div style={{ padding: "var(--space-16) var(--space-16) 0" }}>
+          <Alert tone="info" icon="documents" title={`${firstName}، مطلوب منك رفع ملف`}>
+            {pendingFileRequest.content && <p style={{ margin: 0 }}>{pendingFileRequest.content}</p>}
+            <input ref={fileRef} type="file" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              // For now send as text message with filename — full upload wired via existing upload API
+              await sendMessage("FILE", `أرفق الملف: ${file.name}`, file.name);
+            }} />
+            <div style={{ marginTop: "var(--space-16)" }}>
+              <Button variant="secondary" icon="upload" onClick={() => fileRef.current?.click()} disabled={isPending}>
                 رفع الملف
-              </button>
+              </Button>
             </div>
-          </div>
+          </Alert>
         </div>
       )}
 
       {/* Messages */}
-      <div className="p-4 space-y-3 overflow-y-auto" style={{ minHeight: 160, maxHeight: 280 }}>
+      <div
+        className="flex flex-col gap-2 overflow-y-auto"
+        style={{ padding: "var(--space-16)", minHeight: 160, maxHeight: 280 }}
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -201,20 +172,18 @@ export function PreboardingHub({ applicationId, firstName }: PreboardingHubProps
           >
             {(msg.type === "TEXT" || msg.type === "PING_RESPONSE" || msg.type === "FILE") && (
               <div
-                className="rounded-xl px-3 py-2 max-w-[85%] text-xs"
-                style={{
-                  background: msg.senderType === "CANDIDATE"
-                    ? "var(--color-primary)"
-                    : "var(--color-surface-alt)",
-                  color: msg.senderType === "CANDIDATE" ? "white" : "var(--color-dark)",
-                }}
+                className={`rounded-12 text-ink ${msg.senderType === "CANDIDATE" ? "bg-gold-200" : "bg-surface-100 border border-border-100"}`}
+                style={{ padding: "var(--space-8) var(--space-16)", maxWidth: "85%", fontSize: 14 }}
               >
                 {msg.type === "PING_RESPONSE" && (
-                  <p className="font-bold mb-0.5 opacity-75">✅ تأكيد الجاهزية</p>
+                  <p className="inline-flex items-center gap-2" style={{ margin: "0 0 4px", fontWeight: 600 }}>
+                    <Icon name="approved" size={16} label={false} />
+                    تأكيد الجاهزية
+                  </p>
                 )}
-                {msg.content && <p>{msg.content}</p>}
-                <p className="opacity-50 mt-0.5" style={{ direction: "ltr", textAlign: "left" }}>
-                  {new Date(msg.createdAt).toLocaleTimeString("ar-SA", { timeStyle: "short" })}
+                {msg.content && <p style={{ margin: 0 }}>{msg.content}</p>}
+                <p className="font-numeric" style={{ margin: "4px 0 0", fontSize: 12, opacity: 0.7, direction: "ltr", textAlign: "left" }}>
+                  {new Date(msg.createdAt).toLocaleTimeString("ar-SA-u-nu-latn", { timeStyle: "short" })}
                 </p>
               </div>
             )}
@@ -226,31 +195,28 @@ export function PreboardingHub({ applicationId, firstName }: PreboardingHubProps
       {/* Candidate reply (only if bidirectional) */}
       {bidirectional && (
         <div
-          className="px-4 pb-4 flex gap-2 border-t pt-3"
-          style={{ borderColor: "var(--color-border)" }}
+          className="flex items-end gap-2 border-t border-border-100"
+          style={{ padding: "var(--space-16)" }}
         >
-          <input
+          <Input
+            className="flex-1 min-w-0"
+            label="ردك على الموارد البشرية"
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) sendMessage("TEXT"); }}
             placeholder="اكتب ردك..."
-            className="flex-1 text-sm rounded-xl border px-3 py-2 outline-none"
-            style={{ borderColor: "var(--color-border)", color: "var(--color-dark)" }}
           />
-          <button
+          <Button
             onClick={() => text.trim() && sendMessage("TEXT")}
-            disabled={!text.trim() || isPending}
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: text.trim() && !isPending ? "var(--color-primary)" : "var(--color-border)",
-              color: "white",
-            }}
+            disabled={!text.trim()}
+            loading={isPending}
+            icon="messages"
           >
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} />}
-          </button>
+            إرسال الرد
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

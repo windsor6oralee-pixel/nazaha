@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Send, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   candidateId: string;
@@ -41,37 +42,19 @@ export function ResendInvitationButton({ candidateId, candidateEmail, onSent }: 
   }
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <button
-        onClick={handleResend}
-        disabled={isPending}
-        className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl border transition-all"
-        style={{
-          color: "var(--color-primary)",
-          borderColor: "var(--color-primary)",
-          background: "var(--color-primary-muted)",
-          cursor: isPending ? "not-allowed" : "pointer",
-          opacity: isPending ? 0.7 : 1,
-          fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-          minHeight: 44,
-        }}
-      >
-        {isPending
-          ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الإرسال...</>
-          : <><Send className="w-4 h-4" /> إعادة الإرسال عبر البريد</>}
-      </button>
+    <div className="flex items-center gap-4 flex-wrap">
+      <Button variant="secondary" icon="messages" onClick={handleResend} loading={isPending}>
+        {isPending ? "جارٍ الإرسال..." : "إعادة الإرسال عبر البريد"}
+      </Button>
 
       {status === "success" && (
-        <span className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
-          style={{ background: "var(--color-success-bg)", color: "var(--color-success)" }}>
-          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span role="status" className="nz-dot nz-dot--done">
           {message}
         </span>
       )}
       {status === "error" && (
-        <span className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg"
-          style={{ background: "var(--color-error-bg)", color: "var(--color-error)" }}>
-          <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span role="alert" className="inline-flex items-center gap-2 ds-caption" style={{ color: "var(--danger-500)", fontWeight: 500 }}>
+          <Icon name="close" size={16} label={false} />
           {message}
         </span>
       )}

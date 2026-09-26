@@ -23,7 +23,7 @@ const inputCls = "w-full px-3 py-2 rounded-xl border text-xs outline-none";
 const inputStyle: React.CSSProperties = { borderColor: "var(--color-border)", background: "white", color: "var(--color-text)" };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" });
+  return new Date(iso).toLocaleString("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short" });
 }
 function show(v: unknown): string {
   if (v === null || v === undefined || v === "") return "—";

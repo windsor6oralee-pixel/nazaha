@@ -1,4 +1,6 @@
-import { Calendar, Building, Briefcase, Phone, Mail } from "lucide-react";
+import { Phone } from "lucide-react";
+import { Card, StatCard } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { ProgressTracker } from "@/components/candidate/ProgressTracker";
 import { NextAction } from "@/components/candidate/NextAction";
 import { DocumentCard } from "@/components/candidate/DocumentCard";
@@ -39,9 +41,11 @@ export default async function CandidateDashboard() {
   const requiredDocs = candidate.documents.filter((d) => d.required);
   const optionalDocs = candidate.documents.filter((d) => !d.required);
   const isComplete = candidate.completionPercentage === 100;
+  const approvedRequired = requiredDocs.filter((d) => d.status === "approved").length;
+  const completedSteps = candidate.steps.filter((s) => s.status === "completed").length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8" dir="rtl">
+    <div className="nz-page" dir="rtl">
 
       {/* Onboarding complete celebration */}
       {isComplete && (
@@ -52,41 +56,60 @@ export default async function CandidateDashboard() {
         />
       )}
 
-      {/* Welcome Banner */}
-      {!isComplete && (
-        <div className="relative rounded-2xl p-5 sm:p-6 mb-4 overflow-hidden"
-          style={{ background: "var(--color-primary)" }}>
-          <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-32 -translate-y-32" />
-          <div className="absolute bottom-0 right-0 w-48 h-48 rounded-full translate-x-16 translate-y-16"
-            style={{ background: "var(--color-gold)", opacity: 0.1 }} />
-          <div className="relative">
-            <p className="text-xs sm:text-sm mb-1" style={{ color: "#A8D5B8" }}>مرحباً بك في نزاهة التوظيف</p>
-            <h1 className="text-xl sm:text-2xl font-bold mb-1 text-white">{candidate.name}</h1>
-            <p className="text-xs sm:text-sm" style={{ color: "#C8E8D4" }}>
-              {candidate.jobTitle} · {candidate.department}
-            </p>
-
-            <div className="flex flex-wrap gap-3 sm:gap-4 mt-3 sm:mt-4">
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-                <Calendar className="w-3.5 h-3.5" />
+      {/* Page head (replaces the old welcome banner) */}
+      <div className="nz-page__head">
+        <div style={{ minWidth: 0 }}>
+          <p className="text-green-700" style={{ margin: "0 0 var(--space-8)", fontSize: 13, fontWeight: 500 }}>
+            مرحباً بك في نزاهة التوظيف
+          </p>
+          <h1 className="nz-page__title">{candidate.name}</h1>
+          <p className="nz-page__lead">
+            {candidate.jobTitle} · {candidate.department}
+          </p>
+          {!isComplete && (
+            <div
+              className="flex flex-wrap text-ink-muted"
+              style={{ gap: "var(--space-8) var(--space-24)", marginTop: "var(--space-16)", fontSize: 13 }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Icon name="calendar" size={16} label={false} />
                 تاريخ القبول: {formatDate(candidate.acceptanceDate)}
-              </div>
+              </span>
               {candidate.startDate && (
-                <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-                  <Briefcase className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-2">
+                  <Icon name="calendar" size={16} label={false} />
                   تاريخ المباشرة: {formatDate(candidate.startDate)}
-                </div>
+                </span>
               )}
               {customFields.filter((f) => f.value !== null).map((f) => (
-                <div key={f.id} className="flex items-center gap-1.5 text-xs" style={{ color: "#A8D5B8" }}>
-                  <Building className="w-3.5 h-3.5" />
+                <span key={f.id} className="inline-flex items-center gap-2">
+                  <Icon name="profile" size={16} label={false} />
                   {f.labelAr}: {f.display}
-                </div>
+                </span>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Indicator cards */}
+      <div className="nz-stats nz-stagger">
+        <StatCard
+          icon="reports"
+          value={`${candidate.completionPercentage}%`}
+          label="نسبة إنجاز رحلتك"
+        />
+        <StatCard
+          icon="documents"
+          value={`${approvedRequired} / ${requiredDocs.length}`}
+          label="المستندات المطلوبة المعتمدة"
+        />
+        <StatCard
+          icon="approved"
+          value={`${completedSteps} / ${candidate.steps.length}`}
+          label="الخطوات المكتملة"
+        />
+      </div>
 
       {/* HR welcome note or generic welcome */}
       <WelcomeMessage
@@ -102,25 +125,20 @@ export default async function CandidateDashboard() {
         Desktop: 3-column grid — sidebar right, documents left.
         CSS `order` handles the swap without duplicating markup.
       */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Documents — order-1 on mobile (first), order-2 on desktop (right 2/3) */}
-        <div className="order-1 lg:order-2 lg:col-span-2">
-          <div className="bg-white rounded-2xl border p-5 sm:p-6 shadow-sm"
-            style={{ borderColor: "var(--color-border)" }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="font-bold text-base" style={{ color: "var(--color-dark)" }}>
-                  {firstName}، هذه مستنداتك المطلوبة
-                </h2>
-                <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                  {requiredDocs.filter((d) => d.status === "approved").length} من{" "}
-                  {requiredDocs.length} مستندات مكتملة
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6">
+        <div className="order-1 lg:order-2 lg:col-span-2 min-w-0">
+          <Card
+            title={`${firstName}، هذه مستنداتك المطلوبة`}
+            description={
+              <>
+                <span className="font-numeric">{approvedRequired}</span> من{" "}
+                <span className="font-numeric">{requiredDocs.length}</span> مستندات مكتملة
+              </>
+            }
+          >
+            <div className="flex flex-col gap-2">
               {requiredDocs.map((doc) => (
                 <DocumentCard
                   key={doc.id}
@@ -132,11 +150,10 @@ export default async function CandidateDashboard() {
 
             {optionalDocs.length > 0 && (
               <>
-                <h3 className="font-semibold text-sm mb-3"
-                  style={{ color: "var(--color-text-muted)" }}>
+                <h3 className="text-ink-muted" style={{ margin: "var(--space-24) 0 var(--space-16)", fontSize: 15, fontWeight: 600 }}>
                   مستندات اختيارية
                 </h3>
-                <div className="space-y-3">
+                <div className="flex flex-col gap-2">
                   {optionalDocs.map((doc) => (
                     <DocumentCard
                       key={doc.id}
@@ -147,11 +164,11 @@ export default async function CandidateDashboard() {
                 </div>
               </>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Sidebar — order-2 on mobile (after docs), order-1 on desktop (left 1/3) */}
-        <div className="order-2 lg:order-1 lg:col-span-1 space-y-4">
+        <div className="order-2 lg:order-1 lg:col-span-1 flex flex-col gap-6 min-w-0">
           <ProgressTracker
             steps={candidate.steps}
             completionPercentage={candidate.completionPercentage}
@@ -193,32 +210,28 @@ export default async function CandidateDashboard() {
           )}
 
           {/* Contact Card */}
-          <div className="bg-white rounded-2xl border p-5 shadow-sm"
-            style={{ borderColor: "var(--color-border)" }}>
-            <h3 className="font-bold text-sm mb-3" style={{ color: "var(--color-dark)" }}>
-              بياناتك
-            </h3>
-            <div className="space-y-2">
+          <Card title="بياناتك">
+            <div className="flex flex-col gap-2 text-ink-muted" style={{ fontSize: 14 }}>
               {candidate.phone && (
-                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--color-text-muted)" }}>
-                  <Phone className="w-3.5 h-3.5" />
-                  {candidate.phone}
+                <div className="flex items-center gap-2">
+                  <Phone size={16} strokeWidth={1.75} aria-hidden />
+                  <span dir="ltr">{candidate.phone}</span>
                 </div>
               )}
               {candidate.email && (
-                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--color-text-muted)" }}>
-                  <Mail className="w-3.5 h-3.5" />
-                  {candidate.email}
+                <div className="flex items-center gap-2">
+                  <Icon name="messages" size={16} label={false} />
+                  <span dir="ltr" style={{ overflowWrap: "anywhere" }}>{candidate.email}</span>
                 </div>
               )}
               {candidate.department && (
-                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--color-text-muted)" }}>
-                  <Building className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2">
+                  <Icon name="dashboard" size={16} label={false} />
                   {candidate.department}
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

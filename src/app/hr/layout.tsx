@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/infrastructure/tenant";
-import { PortalNavbar } from "@/components/layout/PortalNavbar";
+import { PortalShell } from "@/components/layout/PortalShell";
 
 export default async function HRLayout({ children }: { children: React.ReactNode }) {
   // getTenantContext also verifies the user and organization are still active.
@@ -10,9 +10,6 @@ export default async function HRLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-beige)" }}>
-      <PortalNavbar type="hr" />
-      <main className="pt-16">{children}</main>
-    </div>
+    <PortalShell type="hr">{children}</PortalShell>
   );
 }

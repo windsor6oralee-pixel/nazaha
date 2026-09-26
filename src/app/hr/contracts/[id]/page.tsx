@@ -33,7 +33,7 @@ export default async function HRContractViewPage({ params }: Props) {
   const st = STATUS[contract.status] ?? STATUS.DRAFT;
   const cand = contract.application.candidate;
   const sig = contract.signatures[0];
-  const fmt = (d: Date) => d.toLocaleString("ar-SA", { dateStyle: "long", timeStyle: "short" });
+  const fmt = (d: Date) => d.toLocaleString("ar-SA-u-nu-latn", { dateStyle: "long", timeStyle: "short" });
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8" dir="rtl">

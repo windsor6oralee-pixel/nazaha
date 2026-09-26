@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/infrastructure/tenant";
-import { PortalNavbar } from "@/components/layout/PortalNavbar";
+import { PortalShell } from "@/components/layout/PortalShell";
 import type { ReactNode } from "react";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -15,9 +15,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-beige)" }}>
-      <PortalNavbar type="hr" />
-      <main className="pt-16">{children}</main>
-    </div>
+    <PortalShell type="hr">{children}</PortalShell>
   );
 }
