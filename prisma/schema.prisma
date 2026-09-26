@@ -9,8 +9,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")          // runtime role: nazaha_app (subject to RLS)
-  directUrl = env("DIRECT_DATABASE_URL")   // migrations only: table owner / superuser
+  url       = env("NEON_DATABASE_URL")
+  directUrl = env("NEON_DATABASE_URL_UNPOOLED")
 }
 
 // ============================================================
