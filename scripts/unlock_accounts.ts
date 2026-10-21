@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Clears login lockouts for every staff account and platform operator.
+ * Clears login lockouts for every staff account, platform operator and candidate.
  *
  * The auth service locks an account for 15 minutes after 5 failed attempts
  * (src/infrastructure/auth/credentials.service.ts). That is the right default
@@ -61,11 +61,20 @@ async function main() {
     select: { email: true, failedLoginAttempts: true, lockedUntil: true },
   });
 
+  const lockedCandidates = await prisma.candidate.findMany({
+    where: { OR: [{ lockedUntil: { not: null } }, { failedLoginAttempts: { gt: 0 } }] },
+    select: { loginEmail: true, nameAr: true, failedLoginAttempts: true, lockedUntil: true },
+  });
+
   const userRes = await prisma.user.updateMany({
     where: { OR: [{ lockedUntil: { not: null } }, { failedLoginAttempts: { gt: 0 } }] },
     data: { failedLoginAttempts: 0, lockedUntil: null },
   });
   const adminRes = await prisma.platformAdmin.updateMany({
+    where: { OR: [{ lockedUntil: { not: null } }, { failedLoginAttempts: { gt: 0 } }] },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
+  const candidateRes = await prisma.candidate.updateMany({
     where: { OR: [{ lockedUntil: { not: null } }, { failedLoginAttempts: { gt: 0 } }] },
     data: { failedLoginAttempts: 0, lockedUntil: null },
   });
@@ -81,7 +90,14 @@ async function main() {
       `   operator ${a.email.padEnd(31)} attempts=${a.failedLoginAttempts} lockedUntil=${a.lockedUntil?.toISOString() ?? "-"}`,
     );
   }
-  console.log(`\n   updated: ${userRes.count} staff account(s), ${adminRes.count} operator account(s)`);
+  for (const c of lockedCandidates) {
+    console.log(
+      `   candidate ${(c.loginEmail ?? "(no login e-mail)").padEnd(31)} attempts=${c.failedLoginAttempts} lockedUntil=${c.lockedUntil?.toISOString() ?? "-"}`,
+    );
+  }
+  console.log(
+    `\n   updated: ${userRes.count} staff account(s), ${adminRes.count} operator account(s), ${candidateRes.count} candidate account(s)`,
+  );
   console.log(`   (${now.toISOString()})`);
 }
 
