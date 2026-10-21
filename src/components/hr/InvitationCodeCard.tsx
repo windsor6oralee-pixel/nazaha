@@ -15,7 +15,7 @@ export interface InvitationView {
   usedAt: string | null;
 }
 
-/** حالة حساب دخول المرشح —exists بمجرد تفعيله برمز الدعوة. */
+/** حالة حساب دخول المرشح — تنشأ بمجرد تفعيله برمز التفعيل. */
 export interface CandidateAccountView {
   loginEmail: string | null;
   activatedAt: string | null;
@@ -122,7 +122,7 @@ export function InvitationCodeCard({ candidateId, candidateEmail, account, invit
                   ? "انتهت صلاحية الرمز. أعد الإرسال لتوليد رمز جديد."
                   : invitation
                     ? "أُنشئ هذا الرمز قبل تفعيل الحفظ المشفّر ولا يمكن عرضه. أعد الإرسال لتوليد رمز جديد."
-                    : "لم يُنشأ رمز دعوة بعد."}
+                    : "لم يُنشأ رمز تفعيل بعد."}
           </div>
           {showCode && <CopyButton value={invitation!.code!} label="نسخ الرمز" className="self-center" />}
         </div>

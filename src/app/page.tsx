@@ -270,7 +270,7 @@ export default function HomePage() {
               <p className="text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
                 لم تُفعّل حسابك بعد؟{" "}
                 <a href="/auth/candidate/setup" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
-                  فعّله برمز الدعوة
+                  فعّله برمز التفعيل
                 </a>
               </p>
             </div>

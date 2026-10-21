@@ -8,7 +8,7 @@ import { NazahaLogo } from "@/components/ui/NazahaLogo";
 /**
  * تفعيل حساب المرشح لأول مرة.
  *
- * رمز الدعوة يُستعمل هنا مرة واحدة فقط: يتحوّل إلى بريد دخول وكلمة مرور،
+ * رمز التفعيل يُستعمل هنا مرة واحدة فقط: يتحوّل إلى بريد دخول وكلمة مرور،
  * ثم يُوسم «مُستخدم» فلا يعود صالحاً. بعد التفعيل يدخل المرشح بحسابه
  * من /auth/candidate.
  */
@@ -89,7 +89,7 @@ function CandidateSetupPageInner() {
           <div className="rounded-xl p-3 mb-5 text-sm"
             style={{ background: "var(--color-primary-muted)", color: "var(--color-primary)" }}>
             <p>
-              استخدم رمز الدعوة المُرسل إليك من إدارة الموارد البشرية، ثم اختر بريداً وكلمة مرور.
+              استخدم رمز التفعيل المُرسل إليك من إدارة الموارد البشرية، ثم اختر بريداً وكلمة مرور.
               بعدها تدخل إلى بوابتك بالحساب الجديد دائماً.
             </p>
           </div>
@@ -98,7 +98,7 @@ function CandidateSetupPageInner() {
             <div>
               <label htmlFor="setup-code" className="block text-sm font-medium mb-1.5"
                 style={{ color: "var(--color-dark)" }}>
-                رمز الدعوة
+                رمز التفعيل
               </label>
               <input
                 id="setup-code"

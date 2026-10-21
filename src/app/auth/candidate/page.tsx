@@ -183,7 +183,7 @@ function CandidateLoginPageInner() {
               <a href="/auth/candidate/setup"
                 className="font-medium hover:underline"
                 style={{ color: "var(--color-primary)" }}>
-                فعّل حسابك برمز الدعوة
+                فعّل حسابك برمز التفعيل
               </a>
             </p>
             <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>

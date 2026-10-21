@@ -209,7 +209,7 @@ export async function setCandidatePassword(input: {
     });
     if (taken && taken.id !== candidate.id) {
       throw new PasswordPolicyError(
-        "تعذّر إنشاء الحساب: بريد التواصل مسجَّل في حساب آخر — فعّل الحساب برمز الدعوة أو بريد دخول مختلف.",
+        "تعذّر إنشاء الحساب: بريد التواصل مسجَّل في حساب آخر — فعّل الحساب برمز التفعيل أو بريد دخول مختلف.",
       );
     }
     loginEmail = wanted;
