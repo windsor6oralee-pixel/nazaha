@@ -1,7 +1,7 @@
 # Skripts
 
-أدوات تشغيل المنصة خارج مسار الطلب: تهيئة بيانات الاختبار، وإدارة رموز
-الدعوة، وفك قفل الحسابات. كل ما هنا يعمل على قاعدة البيانات مباشرة، فاقرأ
+أدوات تشغيل المنصة خارج مسار الطلب: تهيئة بيانات الاختبار، وتجهيز حسابات
+دخول المرشحين، وفك قفل الحسابات. كل ما هنا يعمل على قاعدة البيانات مباشرة، فاقرأ
 قبل تشغيل أيٍّ منها تأكّد أيّ قاعدة بيانات ستلمس.
 
 > **لا كلمة مرور افتراضية في المستودع.** كل سكربت يطلب كلمة المرور من البيئة
@@ -19,7 +19,7 @@
 | مدير نظام الجهة | `admin@mof.gov.sa` | `/auth/login` |
 | مدير الموارد البشرية | `salma.rashidi@mof.gov.sa` | `/auth/login` |
 | موظف الموارد البشرية | `faisal.mansour@mof.gov.sa` | `/auth/login` |
-| مرشّح | برمز دعوة | `/auth/candidate` |
+| مرشّح | بريد + كلمة مرور | `/auth/candidate` |
 
 السكربت **idempotent**: تشغيله مرتين لا يغيّر شيئاً سوى كلمات المرور وحالة
 القفل (تُصفّر محاولات الدخول الفاشلة ويُرفع الحظر).
@@ -29,7 +29,7 @@
 ```bash
 # قاعدة بيانات محلية (يقرأ .env تلقائياً)
 TEST_PASSWORD='<your password>' \
-TEST_CANDIDATE_TOKEN='<fresh invitation code>' \
+TEST_CANDIDATE_EMAIL='ahmed.omari@example.com' \
   npx ts-node --transpile-only --compiler-options '{"module":"commonjs","moduleResolution":"node","esModuleInterop":true,"skipLibCheck":true}' \
   scripts/create_test_accounts.ts
 ```
@@ -41,7 +41,7 @@ TEST_CANDIDATE_TOKEN='<fresh invitation code>' \
 
 ```bash
 TEST_PASSWORD='<your password>' \
-TEST_CANDIDATE_TOKEN='<fresh invitation code>' \
+TEST_CANDIDATE_EMAIL='ahmed.omari@example.com' \
 ALLOW_PRODUCTION_BOOTSTRAP=1 \
 NEON_DATABASE_URL='postgresql://…' \
   npx ts-node --transpile-only … scripts/create_test_accounts.ts
@@ -53,33 +53,62 @@ NEON_DATABASE_URL='postgresql://…' \
 |---|---|---|
 | `TEST_PASSWORD` | **نعم** | — |
 | `TEST_PLATFORM_EMAIL` | لا | `platform@nazaha.sa` |
-| `TEST_CANDIDATE_TOKEN` | نعم عند استخدامه | رمز اختبار جديد يُمرّر صراحةً، دون قيمة افتراضية |
+| `TEST_CANDIDATE_EMAIL` | لا | `ahmed.omari@example.com` |
 | `ALLOW_PRODUCTION_BOOTSTRAP` | لقاعدة مستضافة | — |
 
 > السكربت لا يطبع كلمة المرور نفسها — مخرجاته تذكر فقط أنها مضبوطة من البيئة.
 
 ---
 
-## `mint_candidate_token.ts`
+## `setup_accepted_candidates_auth.ts`
 
-يصدِّر **رمز دعوة جديداً** للمرشّح ويطبعه. رموز الدعوة تُستخدم مرّة واحدة،
-فكل تشغيل لبوابة المرشّح يحتاج رمزاً جديداً.
+يجهّز حسابات دخول **للمرشحين المقبولين** دفعةً واحدة: بريد دخول مميّز وكلمة
+مرور مشفّرة، مع تصفير عدّاد المحاولات الفاشلة ورفع أي حظر.
+
+كل مرشح مقبول (طلب بحالة `PENDING` / `IN_PROGRESS` / `UNDER_REVIEW` / `APPROVED`)
+يحصل على حساب دخول دائم. المرشحون الذين لا يصلح بريد دخول لهم — لأن بريد
+التواصل مستخدم في حساب آخر — يُتخطّون ويُبلَّغ عنهم في المخرجات.
 
 ```bash
-E2E_BASE_URL='http://localhost:3002' \
-TEST_PASSWORD='<your password>' \
-HR_EMAIL='admin@mof.gov.sa' \
-  npx ts-node --transpile-only … scripts/mint_candidate_token.ts
-```
+# بتمرير كلمة مرور واحدة لكل الحسابات
+SETUP_PASSWORD='<your password>' npm run candidate:setup
 
-يعمل كما يعمل موظف الموارد البشرية في المتصفّح: يسجّل الدخول، ثم يطلب إعادة
-إرسال الدعوة، ثم يقرأ الرمز المُدوَّر من ملف المرشّح.
+# بلا كلمة مرور: تُولَّد كلمة مرور عشوائية لكل مرشح وتُطبع مرة واحدة
+npm run candidate:setup
+
+# بلا كتابة — معاينة فقط
+npm run candidate:setup -- --dry-run
+```
 
 | المتغيّر | مطلوب؟ | الافتراضي |
 |---|---|---|
-| `TEST_PASSWORD` | **نعم** | — |
-| `E2E_BASE_URL` | لا | `http://localhost:3002` |
-| `HR_EMAIL` | لا | `admin@mof.gov.sa` |
+| `SETUP_PASSWORD` | لا | كلمة مرور عشوائية لكل مرشح، تُطبع مرة واحدة |
+| `ALLOW_PRODUCTION_BOOTSTRAP` | لقاعدة مستضافة | — |
+| `BOOTSTRAP_DATABASE_URL` | لا | `NEON_DATABASE_URL` |
+
+---
+
+## `set_candidate_password.ts`
+
+يضبط حساب مرشح واحد (أو ينشئه): بريد الدخول، كلمة المرور المشفّرة، وصفّر
+عدّاد المحاولات.
+
+```bash
+CANDIDATE_EMAIL='ahmed.omari@example.com' \
+SETUP_PASSWORD='<your password>' \
+  npm run candidate:password
+```
+
+بلا `SETUP_PASSWORD` تُولَّد كلمة مرور عشوائية وتُطبع مرة واحدة.
+
+| المتغيّر | مطلوب؟ | الافتراضي |
+|---|---|---|
+| `CANDIDATE_EMAIL` | **نعم** | — |
+| `SETUP_PASSWORD` | لا | كلمة مرور عشوائية، تُطبع مرة واحدة |
+| `ALLOW_PRODUCTION_BOOTSTRAP` | لقاعدة مستضافة | — |
+
+> داخل المنصة، نفس المهمة متاحة من `/platform/accounts` ← **حسابات المرشحين**
+> (زر «ضبط كلمة المرور» أو «إنشاء حساب») — فتُسجَّل العملية في سجل التدقيق.
 
 ---
 

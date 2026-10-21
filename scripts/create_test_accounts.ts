@@ -7,7 +7,7 @@
  *   - Tenant admin       → /auth/login   (role: admin)
  *   - HR manager         → /auth/login   (role: hr_manager)
  *   - HR officer         → /auth/login   (role: hr_officer)
- *   - Candidate          → /auth/candidate (magic-link token)
+ *   - Candidate          → /auth/candidate (e-mail + password)
  *
  * It is idempotent: running it twice only refreshes passwords and unlocks
  * accounts (failed-login counters are reset, lockouts cleared).
@@ -23,16 +23,15 @@
  *
  * Optional overrides:
  *   TEST_PASSWORD      password shared by every account (required — no default)
- *   TEST_PLATFORM_EMAIL / TEST_CANDIDATE_TOKEN
+ *   TEST_PLATFORM_EMAIL / TEST_CANDIDATE_EMAIL
  *
  * Guard: when the target database is NOT a local one, the script refuses to run
  * unless ALLOW_PRODUCTION_BOOTSTRAP=1 is set explicitly — writing test accounts
  * into a live database must be a deliberate act, never an accident.
  * ──────────────────────────────────────────────────────────────────────────
  */
-import { PrismaClient, OrgType, StepType, DocumentType, ApplicationStatus, TokenPurpose } from "@prisma/client";
+import { PrismaClient, OrgType, StepType, ApplicationStatus } from "@prisma/client";
 import { hash as bcryptHash } from "bcryptjs";
-import { createHash } from "crypto";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { DEFAULT_TEMPLATES } from "../src/infrastructure/contracts/default-templates";
@@ -82,13 +81,7 @@ if (!process.env.TEST_PASSWORD) {
 }
 const PASSWORD: string = process.env.TEST_PASSWORD!;
 const PLATFORM_EMAIL = (process.env.TEST_PLATFORM_EMAIL ?? "platform@nazaha.sa").toLowerCase();
-const candidateTokenEnv = process.env.TEST_CANDIDATE_TOKEN;
-if (!candidateTokenEnv) {
-  console.error("❌ TEST_CANDIDATE_TOKEN is not set.");
-  console.error("   Supply a fresh test token explicitly; no default token is permitted.");
-  process.exit(1);
-}
-const CANDIDATE_TOKEN: string = candidateTokenEnv;
+const CANDIDATE_EMAIL = (process.env.TEST_CANDIDATE_EMAIL ?? "ahmed.omari@example.com").toLowerCase();
 
 /**
  * قاعدة البيانات المستهدفة محلية أم مستضافة؟
@@ -119,8 +112,6 @@ if (!isLocalDatabase(TARGET_URL) && process.env.ALLOW_PRODUCTION_BOOTSTRAP !== "
   console.error("   Re-run with ALLOW_PRODUCTION_BOOTSTRAP=1 if that is really what you want.");
   process.exit(1);
 }
-
-const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
 const PERMISSIONS = [
   { resource: "candidates", action: "read" },
@@ -305,7 +296,7 @@ async function ensureUser(input: {
 }
 
 async function ensureCandidate(orgId: string, workflowId: string) {
-  const email = "ahmed.omari@example.com";
+  const email = CANDIDATE_EMAIL;
   const candidate = await prisma.candidate.upsert({
     where: { organizationId_nationalId: { organizationId: orgId, nationalId: "1098765432" } },
     update: {},
@@ -354,15 +345,17 @@ async function ensureCandidate(orgId: string, workflowId: string) {
     });
   }
 
-  // magic-link token (raw value is never stored — only its SHA-256 hash)
-  await prisma.verificationToken.upsert({
-    where: { tokenHash: sha256(CANDIDATE_TOKEN) },
-    update: { usedAt: null, expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) },
-    create: {
-      tokenHash: sha256(CANDIDATE_TOKEN),
-      candidateId: candidate.id,
-      purpose: TokenPurpose.LOGIN,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+  // حساب دخول دائم: بريد مميّز + كلمة مرور مشفّرة.
+  // تهيئة حساب اختبار لا «تغيير كلمة مرور» — فلا يُبطل جلسات قائمة.
+  await prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      loginEmail: email,
+      passwordHash: await bcryptHash(PASSWORD, 12),
+      accountActivatedAt: new Date(),
+      passwordChangedAt: new Date(),
+      failedLoginAttempts: 0,
+      lockedUntil: null,
     },
   });
 
@@ -475,7 +468,7 @@ async function main() {
     { role: "مدير الموارد البشرية", portal: "/auth/login", email: "salma.rashidi@mof.gov.sa" },
     { role: "موظف الموارد البشرية", portal: "/auth/login", email: "faisal.mansour@mof.gov.sa" },
     { role: "مشرف جهة أخرى (dga)", portal: "/auth/login", email: "admin@dga.gov.sa" },
-    { role: "مرشح (magic link)", portal: "/auth/candidate", email: "ahmed.omari@example.com" },
+    { role: "مرشح (بريد + كلمة مرور)", portal: "/auth/candidate", email: CANDIDATE_EMAIL },
   ];
 
   console.log("✅ Accounts ready:\n");

@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:roles": "playwright test e2e/roles.spec.ts",
-    "token:candidate": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/mint_candidate_token.ts",
+    "candidate:password": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/set_candidate_password.ts",
+    "candidate:setup": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/setup_accepted_candidates_auth.ts",
     "unlock:accounts": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/unlock_accounts.ts",
     "check:deps": "node scripts/ci/check-deps.mjs",
     "ci": "bash scripts/ci/test.sh"
