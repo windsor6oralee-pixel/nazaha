@@ -35,6 +35,17 @@ yarn-error.log*
 .env.local
 .env.production
 
+# local test-credentials reference — must never be committed
+TEST_ACCOUNTS.md
+
+# playwright
+/.playwright/
+/test-results/
+/playwright-report/
+
+# screenshots written by the e2e walkthroughs
+/screenshots/
+
 # File storage (local uploads)
 /storage/
 
