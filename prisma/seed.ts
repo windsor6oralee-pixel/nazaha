@@ -5,8 +5,9 @@
  *
  * DEV ONLY — never run against production.
  * Credentials are read from environment variables so no secret value
- * is hard-coded. Set SEED_DEV_HR_PASSWORD and SEED_DEV_CANDIDATE_TOKEN
- * in .env (defaults are fine for local development only).
+ * is hard-coded. Set SEED_DEV_HR_PASSWORD, SEED_DEV_CANDIDATE_PASSWORD and
+ * SEED_DEV_CANDIDATE_TOKEN in .env (defaults are fine for local development
+ * only).
  */
 import { PrismaClient, DocumentType, StepType } from "@prisma/client";
 import { createHash } from "crypto";
@@ -350,6 +351,7 @@ async function main() {
 
   // Verification token — raw value only ever in env/.env, only hash stored in DB.
   // Re-seeding always resets usedAt so the token is valid again for dev testing.
+  // (The token activates the account; the password below is the direct login.)
   const rawToken = process.env.SEED_DEV_CANDIDATE_TOKEN ?? "change-me-dev-token";
   const tokenHash = sha256(rawToken);
   await prisma.verificationToken.upsert({
@@ -362,6 +364,20 @@ async function main() {
       tokenHash,
       candidateId: candidate.id,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+    },
+  });
+
+  // حساب دخول دائم للمرشح —-development only.
+  const devCandidatePassword = process.env.SEED_DEV_CANDIDATE_PASSWORD ?? "change-me-dev-only";
+  await prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      loginEmail: candidate.email.toLowerCase(),
+      passwordHash: await bcryptHash(devCandidatePassword, 12),
+      accountActivatedAt: new Date(),
+      passwordChangedAt: new Date(),
+      failedLoginAttempts: 0,
+      lockedUntil: null,
     },
   });
 

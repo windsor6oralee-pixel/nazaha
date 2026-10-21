@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
+import type { ApplicationStatus } from "@prisma/client";
 import type { SessionType } from "@/types/next-auth";
 import { prisma } from "@/infrastructure/database/client";
+import { validatePassword } from "@/lib/password";
 
 // Credential verification lives here (not inside the NextAuth config) so it can be
 // unit-tested directly. Each verifier returns the session principal or null; it never
@@ -63,29 +65,85 @@ export async function verifyHRCredentials(email: string, password: string): Prom
   };
 }
 
-export async function verifyCandidateToken(rawToken: string): Promise<AuthPrincipal | null> {
-  const token = await prisma.verificationToken.findUnique({
-    where: { tokenHash: sha256(rawToken) },
-    include: { candidate: { include: { organization: { select: { isActive: true } } } } },
-  });
-  if (!token || token.usedAt || token.expiresAt < new Date()) return null;
+/**
+ * حالات الطلب التي يُسمح فيها بدخول المرشح إلى بوابته.
+ *
+ * الحالات النهائية (مرفوض/منسحب/مكتمل) تُغلق الباب: لا معنى لحساب دخول لمن
+ * انتهت علاقته بالجهة. الباقي — قيد المراجعة أو مقبول — دخوله مشروع.
+ */
+const CANDIDATE_LOGIN_STATUSES: ApplicationStatus[] = [
+  "PENDING",
+  "IN_PROGRESS",
+  "UNDER_REVIEW",
+  "APPROVED",
+];
 
-  const candidate = token.candidate;
-  if (!candidate.organization.isActive) return null;
-
-  const application = await prisma.application.findFirst({
-    where: { candidateId: candidate.id, status: { notIn: ["COMPLETED", "WITHDRAWN", "REJECTED"] } },
+/** أحدث طلب نشط للمرشح — هو الذي يحدّد حالة «مقبول» في النظام. */
+async function findActiveApplication(candidateId: string) {
+  return prisma.application.findFirst({
+    where: { candidateId, status: { in: CANDIDATE_LOGIN_STATUSES } },
     orderBy: { createdAt: "desc" },
   });
+}
 
-  await prisma.$transaction([
-    prisma.verificationToken.update({ where: { id: token.id }, data: { usedAt: new Date() } }),
-    prisma.candidate.update({ where: { id: candidate.id }, data: { lastAccessAt: new Date() } }),
-  ]);
+/**
+ * دخول المرشح ببريد وكلمة مرور.
+ *
+ * ثلاث شروط مجتمعة: الحساب مفعّل (له كلمة مرور)، والجهة ما زالت نشطة، وله
+ * طلب نشط. كلمة المرور تُقارن بـ bcrypt، والمقارنة الفاشلة تُحسب محاولةً
+ * حتى يُقفل الحساب بعد خمس محاولات.
+ */
+export async function verifyCandidateCredentials(
+  email: string,
+  password: string,
+): Promise<AuthPrincipal | null> {
+  const loginEmail = email.trim().toLowerCase();
+  if (!loginEmail || !password) return null;
+
+  const candidate = await prisma.candidate.findUnique({
+    where: { loginEmail },
+    include: { organization: { select: { isActive: true } } },
+  });
+  // حساب غير مفعّل أو جهة معطّلة — نردّ null دون كشف السبب.
+  if (!candidate || !candidate.passwordHash || !candidate.organization.isActive) return null;
+
+  if (candidate.lockedUntil && candidate.lockedUntil > new Date()) return null;
+
+  const passwordOk = await compare(password, candidate.passwordHash);
+  if (!passwordOk) {
+    const attempts = candidate.failedLoginAttempts + 1;
+    await prisma.candidate.update({
+      where: { id: candidate.id },
+      data: {
+        failedLoginAttempts: attempts,
+        lockedUntil: attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MS) : null,
+      },
+    });
+    return null;
+  }
+
+  const application = await findActiveApplication(candidate.id);
+  // لا طلب نشط ⇒ لا دخول، حتى لو كانت كلمة المرور صحيحة.
+  if (!application) return null;
+
+  const now = new Date();
+  await prisma.candidate.update({
+    where: { id: candidate.id },
+    data: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: now,
+      lastAccessAt: now,
+    },
+  });
   await prisma.auditLog.create({
     data: {
-      actorType: "CANDIDATE", action: "candidate.login", resource: "Candidate",
-      resourceId: candidate.id, candidateId: candidate.id, applicationId: application?.id,
+      actorType: "CANDIDATE",
+      action: "candidate.login",
+      resource: "Candidate",
+      resourceId: candidate.id,
+      candidateId: candidate.id,
+      applicationId: application.id,
     },
   });
 
@@ -96,8 +154,107 @@ export async function verifyCandidateToken(rawToken: string): Promise<AuthPrinci
     role: "candidate",
     sessionType: "candidate",
     organizationId: candidate.organizationId,
-    applicationId: application?.id,
+    applicationId: application.id,
   };
+}
+
+/** سبب فشل تفعيل حساب المرشح — يُترجم إلى رسالة في الواجهة. */
+export type CandidateAccountErrorCode =
+  | "INVALID_CODE"
+  | "EMAIL_TAKEN"
+  | "WEAK_PASSWORD"
+  | "NO_ACTIVE_APPLICATION";
+
+/** خطأ تفعيل حساب المرشح. */
+export class CandidateAccountError extends Error {
+  constructor(
+    readonly code: CandidateAccountErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "CandidateAccountError";
+  }
+}
+
+/**
+ * تفعيل حساب المرشح برمز الدعوة.
+ *
+ * رمز الدعوة هنا ليس وسيلة دخول بل **إثبات هوية لمرة واحدة**: يتحوّل إلى
+ * حساب دائم (بريد + كلمة مرور) ثم يُوسم «مُستخدم» فلا يعود صالحاً.
+ */
+export async function activateCandidateAccount(
+  rawToken: string,
+  loginEmail: string,
+  password: string,
+): Promise<{ candidateId: string; loginEmail: string }> {
+  const email = loginEmail.trim().toLowerCase();
+
+  const problem = validatePassword(password);
+  if (problem) throw new CandidateAccountError("WEAK_PASSWORD", problem);
+  if (!email) throw new CandidateAccountError("EMAIL_TAKEN", "بريد الدخول مطلوب");
+
+  const token = await prisma.verificationToken.findUnique({
+    where: { tokenHash: sha256(rawToken) },
+    include: { candidate: { include: { organization: { select: { isActive: true } } } } },
+  });
+  if (!token || token.usedAt || token.expiresAt < new Date()) {
+    throw new CandidateAccountError(
+      "INVALID_CODE",
+      "رمز التفعيل غير صحيح أو منتهي الصلاحية — اطلب رمزاً جديداً من الموارد البشرية.",
+    );
+  }
+
+  const candidate = token.candidate;
+  if (!candidate.organization.isActive) {
+    throw new CandidateAccountError("INVALID_CODE", "حساب الجهة غير نشط.");
+  }
+
+  const application = await findActiveApplication(candidate.id);
+  if (!application) {
+    throw new CandidateAccountError(
+      "NO_ACTIVE_APPLICATION",
+      "لا يوجد طلب نشط لهذا الحساب — راجع الموارد البشرية في جهتك.",
+    );
+  }
+
+  const taken = await prisma.candidate.findUnique({
+    where: { loginEmail: email },
+    select: { id: true },
+  });
+  if (taken && taken.id !== candidate.id) {
+    throw new CandidateAccountError("EMAIL_TAKEN", "هذا البريد مسجَّل في حساب آخر.");
+  }
+
+  const passwordHash = await hash(password, 12);
+  const now = new Date();
+
+  await prisma.$transaction([
+    prisma.candidate.update({
+      where: { id: candidate.id },
+      data: {
+        loginEmail: email,
+        passwordHash,
+        accountActivatedAt: now,
+        passwordChangedAt: now,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    }),
+    prisma.verificationToken.update({ where: { id: token.id }, data: { usedAt: now } }),
+  ]);
+
+  await prisma.auditLog.create({
+    data: {
+      actorType: "CANDIDATE",
+      action: "candidate.account_activated",
+      resource: "Candidate",
+      resourceId: candidate.id,
+      candidateId: candidate.id,
+      applicationId: application.id,
+    },
+  });
+
+  return { candidateId: candidate.id, loginEmail: email };
 }
 
 export async function verifyPlatformCredentials(email: string, password: string): Promise<AuthPrincipal | null> {
@@ -210,8 +367,20 @@ export async function isPrincipalActive(principal: {
 
   const c = await prisma.candidate.findUnique({
     where: { id: principal.id },
-    select: { organizationId: true, organization: { select: { isActive: true } } },
+    select: {
+      organizationId: true,
+      passwordChangedAt: true,
+      accountActivatedAt: true,
+      organization: { select: { isActive: true } },
+    },
   });
-  // المرشحون يدخلون برمز دعوة لا بكلمة مرور، فلا تغيير لكلمة المرور لديهم.
-  return !!c && c.organization.isActive && c.organizationId === principal.organizationId;
+  // المرشح يدخل بحساب مفعّل (له كلمة مرور)، وتغيير كلمته يُبطل جلساته
+  // القديمة — كما في كل دور آخر.
+  return (
+    !!c &&
+    c.organization.isActive &&
+    c.organizationId === principal.organizationId &&
+    !!c.accountActivatedAt &&
+    !isSessionStale(principal.sessionIssuedAt, c.passwordChangedAt)
+  );
 }

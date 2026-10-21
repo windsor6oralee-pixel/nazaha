@@ -261,6 +261,18 @@ model Candidate {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
+  // ── حساب دخول المرشح ───────────────────────────────────────────────────
+  // بريد الدخول مميّز، ويبقى فارغاً حتى يفعّل المرشح حسابه برمز الدعوة.
+  // (`email` أعلاه هو بريد التواصل الذي أدخلته الموارد البشرية، وقد يتكرّر
+  // بين مرشّحين — ولهذا بريد الدخول حقل مستقل لا فهرس فريد على `email`.)
+  loginEmail    String?   @unique
+  passwordHash  String?
+  failedLoginAttempts Int  @default(0)
+  lockedUntil   DateTime?
+  passwordChangedAt DateTime?
+  lastLoginAt   DateTime?
+  accountActivatedAt DateTime?
+
   // Token-based auth is in VerificationToken table
   lastAccessAt DateTime?
 

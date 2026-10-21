@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import {
   verifyHRCredentials,
-  verifyCandidateToken,
+  verifyCandidateCredentials,
   verifyPlatformCredentials,
 } from "./credentials.service";
 
@@ -27,14 +27,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
 
     Credentials({
-      id: "candidate-token",
-      name: "Candidate Magic Link",
+      id: "candidate-credentials",
+      name: "Candidate Login",
       credentials: {
-        token: { label: "Token", type: "text" },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.token) return null;
-        return verifyCandidateToken(String(credentials.token));
+        if (!credentials?.email || !credentials?.password) return null;
+        return verifyCandidateCredentials(String(credentials.email), String(credentials.password));
       },
     }),
 
