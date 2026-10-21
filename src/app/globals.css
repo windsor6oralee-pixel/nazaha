@@ -431,10 +431,7 @@ textarea.field { padding: 10px var(--space-16); line-height: 1.7; }
 }
 .nz-stat--link:hover { border-color: var(--green-700); background: var(--surface-000); }
 .nz-stat--link:hover .nz-stat__go { opacity: 1; }
-.nz-stat--link:focus-visible {
-  outline: 2px solid var(--green-700);
-  outline-offset: 2px;
-}
+/* إطار التركيز يبقى بإطار نظام التصميم (ذهبي) — لا قاعدة خاصة. */
 
 /* ---------- Table ---------- */
 .nz-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-8); }
