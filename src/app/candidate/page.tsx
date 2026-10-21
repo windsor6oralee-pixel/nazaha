@@ -6,6 +6,7 @@ import { NextAction } from "@/components/candidate/NextAction";
 import { DocumentCard } from "@/components/candidate/DocumentCard";
 import { ContractCard } from "@/components/candidate/ContractCard";
 import { SignedContractCard } from "@/components/candidate/SignedContractCard";
+import { WhatsAppContact } from "@/components/candidate/WhatsAppContact";
 import { WelcomeMessage } from "@/components/candidate/WelcomeMessage";
 import { PreboardingHub } from "@/components/candidate/PreboardingHub";
 import { CountdownCard } from "@/components/candidate/CountdownCard";
@@ -232,6 +233,13 @@ export default async function CandidateDashboard() {
               )}
             </div>
           </Card>
+
+          {/* WhatsApp — رقم جهة المرشح، يظهر بعد دخوله برمز الدعوة */}
+          <WhatsAppContact
+            phone={org.contactPhone}
+            orgName={org.nameAr}
+            candidateName={candidate.name}
+          />
         </div>
       </div>
     </div>

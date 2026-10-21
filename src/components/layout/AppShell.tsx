@@ -40,6 +40,8 @@ interface AppShellProps {
   context?: string;
   /** عناصر في طرف الترويسة (المتصلون الآن…). */
   headerEnd?: ReactNode;
+  /** عنصر إضافي في القائمة الجانبية فوق منطقة المستخدم (زر تواصل…). */
+  asideExtra?: ReactNode;
   children: ReactNode;
 }
 
@@ -49,7 +51,7 @@ function isActive(pathname: string, item: NavItem) {
 }
 
 export function AppShell({
-  nav, homeHref, signOutUrl, userName, orgName, orgLogoUrl, sideColor, context, headerEnd, children,
+  nav, homeHref, signOutUrl, userName, orgName, orgLogoUrl, sideColor, context, headerEnd, asideExtra, children,
 }: AppShellProps) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
@@ -115,6 +117,7 @@ export function AppShell({
         </nav>
 
         <div className="nz-shell__foot">
+          {asideExtra && <div className="nz-shell__aside-extra">{asideExtra}</div>}
           {userName && (
             <div className="nz-shell__user">
               <span className="nz-shell__avatar" aria-hidden>{userName.charAt(0)}</span>

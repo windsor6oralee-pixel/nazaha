@@ -32,6 +32,8 @@ export interface OrganizationBranding {
   nameAr: string;
   logoUrl: string | null;
   primaryColor: string | null;
+  /** رقم تواصل الجهة — يظهر للمرشح كزر واتساب داخل بوابته. */
+  contactPhone: string | null;
 }
 
 const profileSelect = {
@@ -54,12 +56,13 @@ export async function getOrganizationProfile(organizationId: string): Promise<Or
 export async function getOrganizationBranding(organizationId: string): Promise<OrganizationBranding> {
   const row = await prisma.organization.findUnique({
     where: { id: organizationId },
-    select: { nameAr: true, logoPath: true, primaryColor: true },
+    select: { nameAr: true, logoPath: true, primaryColor: true, contactPhone: true },
   });
   return {
     nameAr: row?.nameAr ?? "",
     logoUrl: row?.logoPath ? `/api/organization/logo?v=${encodeURIComponent(row.logoPath)}` : null,
     primaryColor: row?.primaryColor ?? null,
+    contactPhone: row?.contactPhone ?? null,
   };
 }
 

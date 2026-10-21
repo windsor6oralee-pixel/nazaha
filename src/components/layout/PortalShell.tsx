@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppShell, type NavGroup } from "@/components/layout/AppShell";
 import { OnlineBadge } from "@/components/hr/OnlineBadge";
+import { WhatsAppContact } from "@/components/candidate/WhatsAppContact";
 import { getTenantContext } from "@/infrastructure/tenant";
 import { getOrganizationBranding } from "@/infrastructure/services/organization.service";
 
@@ -59,6 +60,17 @@ export async function PortalShell({ type, children }: { type: "candidate" | "hr"
       orgLogoUrl={branding?.logoUrl ?? null}
       sideColor={type === "hr" ? branding?.primaryColor ?? null : null}
       headerEnd={type === "hr" ? <OnlineBadge /> : undefined}
+      asideExtra={
+        // زر واتساب للمرشح فقط — يظهر بعد دخوله برمز الدعوة، برقم جهة المرشح.
+        type === "candidate" ? (
+          <WhatsAppContact
+            phone={branding?.contactPhone ?? null}
+            orgName={branding?.nameAr ?? null}
+            candidateName={ctx?.nameAr ?? null}
+            variant="pill"
+          />
+        ) : undefined
+      }
     >
       {children}
     </AppShell>
