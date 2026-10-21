@@ -15,6 +15,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <PortalShell type="hr">{children}</PortalShell>
+    <PortalShell type="hr" ctx={ctx}>{children}</PortalShell>
   );
 }

@@ -4,7 +4,6 @@ import {
   verifyHRCredentials,
   verifyCandidateToken,
   isPrincipalActive,
-  resetLivenessCache,
 } from "@/infrastructure/auth/credentials.service";
 
 // Closes Vuln 3: suspending an organization (or a user) must lock out logins
@@ -18,14 +17,13 @@ const CANDIDATE_TOKEN = process.env.SEED_DEV_CANDIDATE_TOKEN ?? "change-me-dev-t
 let orgId: string;
 let userId: string;
 let candidateId: string;
+let originalChangedAt: Date | null = null;
 
 async function setOrgActive(active: boolean) {
   await prisma.organization.update({ where: { id: orgId }, data: { isActive: active } });
-  resetLivenessCache();
 }
 async function setUserActive(active: boolean) {
   await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
-  resetLivenessCache();
 }
 // The seeded magic token is single-use; re-arm it so the candidate login can be exercised.
 async function rearmCandidateToken() {
@@ -35,10 +33,15 @@ async function rearmCandidateToken() {
 }
 
 beforeAll(async () => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { email: HR_EMAIL }, select: { id: true, organizationId: true } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { email: HR_EMAIL }, select: { id: true, organizationId: true, passwordChangedAt: true } });
   orgId = user.organizationId;
   userId = user.id;
   candidateId = (await prisma.candidate.findFirstOrThrow({ where: { organizationId: orgId, nationalId: "1098765432" } })).id;
+
+  // الجلسات في هذا الملف بلا تاريخ إصدار، فأي «تغيير كلمة مرور» سابق يجعلها
+  // باطلة احتياطاً. نُلغي الطابع ليختبر الإيقاف وحده.
+  originalChangedAt = user.passwordChangedAt;
+  await prisma.user.update({ where: { id: userId }, data: { passwordChangedAt: null } });
 });
 
 afterEach(async () => {
@@ -47,7 +50,10 @@ afterEach(async () => {
   await rearmCandidateToken();
 });
 
-afterAll(async () => prisma.$disconnect());
+afterAll(async () => {
+  await prisma.user.update({ where: { id: userId }, data: { passwordChangedAt: originalChangedAt } });
+  await prisma.$disconnect();
+});
 
 describe("login", () => {
   it("HR login works for an active user in an active organization", async () => {
@@ -110,7 +116,16 @@ describe("live sessions", () => {
     expect(await isPrincipalActive({ sessionType: "hr_user", id: userId, organizationId: "some-other-org" })).toBe(false);
   });
 
-  it("platform admins are not subject to tenant liveness", async () => {
-    expect(await isPrincipalActive({ sessionType: "platform_admin", id: "x", organizationId: "" })).toBe(true);
+  it("platform admins are subject to their own account state", async () => {
+    const admin = await prisma.platformAdmin.findFirst();
+    if (!admin) return; // لا يوجد مشغّل منصة في قاعدة الاختبار
+    const principal = { sessionType: "platform_admin" as const, id: admin.id, organizationId: "" };
+    expect(await isPrincipalActive(principal)).toBe(true);
+
+    await prisma.platformAdmin.update({ where: { id: admin.id }, data: { isActive: false } });
+    expect(await isPrincipalActive(principal)).toBe(false);
+
+    await prisma.platformAdmin.update({ where: { id: admin.id }, data: { isActive: true } });
+    expect(await isPrincipalActive(principal)).toBe(true);
   });
 });

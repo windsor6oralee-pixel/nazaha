@@ -10,6 +10,6 @@ export default async function HRLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <PortalShell type="hr">{children}</PortalShell>
+    <PortalShell type="hr" ctx={ctx}>{children}</PortalShell>
   );
 }

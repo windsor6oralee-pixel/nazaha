@@ -12,6 +12,9 @@ declare module "next-auth" {
       // Empty string for platform admins — they have no tenant.
       organizationId: string;
       applicationId?: string;
+      // وقت إصدار التوقيع — يُقارن بـ passwordChangedAt لإبطال الجلسات القديمة.
+      // قد يصل نصاً بعد عبور الجلسة عبر JSON.
+      sessionIssuedAt?: Date | string;
     } & DefaultSession["user"];
   }
 
@@ -32,5 +35,7 @@ declare module "next-auth/jwt" {
     sessionType: SessionType;
     organizationId: string;
     applicationId?: string;
+    // وقت فتح الجلسة بالمللي ثانية — يُضبط مرة واحدة عند الدخول ويبقى.
+    sessionIssuedAt?: number;
   }
 }

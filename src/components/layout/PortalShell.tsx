@@ -2,17 +2,26 @@ import type { ReactNode } from "react";
 import { AppShell, type NavGroup } from "@/components/layout/AppShell";
 import { OnlineBadge } from "@/components/hr/OnlineBadge";
 import { WhatsAppContact } from "@/components/candidate/WhatsAppContact";
-import { getTenantContext } from "@/infrastructure/tenant";
 import { getOrganizationBranding } from "@/infrastructure/services/organization.service";
+import type { TenantContext } from "@/infrastructure/tenant";
 
 const ADMIN_ROLES = ["admin", "hr_manager"];
 
 // Server wrapper: resolves tenant branding once per request and feeds the client shell.
 // Candidates see the org's name and logo only; the sidebar colour is an HR-portal affordance.
-export async function PortalShell({ type, children }: { type: "candidate" | "hr"; children: ReactNode }) {
-  const ctx = await getTenantContext();
-  const branding = ctx ? await getOrganizationBranding(ctx.organizationId) : null;
-  const showAdmin = type === "hr" && ctx?.kind === "hr" && ADMIN_ROLES.includes(ctx.role);
+// The context arrives from the layout, which already resolved it — asking for it again
+// here would repeat the liveness query on every page.
+export async function PortalShell({
+  type,
+  ctx,
+  children,
+}: {
+  type: "candidate" | "hr";
+  ctx: TenantContext;
+  children: ReactNode;
+}) {
+  const branding = await getOrganizationBranding(ctx.organizationId);
+  const showAdmin = type === "hr" && ctx.kind === "hr" && ADMIN_ROLES.includes(ctx.role);
 
   const nav: NavGroup[] =
     type === "hr"
@@ -55,7 +64,7 @@ export async function PortalShell({ type, children }: { type: "candidate" | "hr"
       nav={nav}
       homeHref={type === "hr" ? "/hr" : "/candidate"}
       signOutUrl={type === "hr" ? "/auth/login" : "/auth/candidate"}
-      userName={ctx?.nameAr}
+      userName={ctx.nameAr}
       orgName={branding?.nameAr}
       orgLogoUrl={branding?.logoUrl ?? null}
       sideColor={type === "hr" ? branding?.primaryColor ?? null : null}

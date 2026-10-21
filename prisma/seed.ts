@@ -126,7 +126,9 @@ async function main() {
 
   const hrManager = await prisma.user.upsert({
     where: { email: "salma.rashidi@mof.gov.sa" },
-    update: { passwordHash }, // always refresh hash on re-seed
+    // always refresh hash on re-seed — and clear the change stamp so re-seeding
+    // does not invalidate live sessions in the dev environment.
+    update: { passwordHash, passwordChangedAt: null },
     create: {
       email: "salma.rashidi@mof.gov.sa",
       passwordHash,
@@ -140,7 +142,7 @@ async function main() {
 
   const hrOfficer = await prisma.user.upsert({
     where: { email: "faisal.mansour@mof.gov.sa" },
-    update: { passwordHash }, // always refresh hash on re-seed
+    update: { passwordHash, passwordChangedAt: null }, // always refresh hash on re-seed
     create: {
       email: "faisal.mansour@mof.gov.sa",
       passwordHash,
@@ -158,7 +160,7 @@ async function main() {
   const platformHash = await bcryptHash(process.env.SEED_DEV_PLATFORM_PASSWORD ?? "change-me-platform-dev", 12);
   const platformAdmin = await prisma.platformAdmin.upsert({
     where: { email: platformEmail },
-    update: { passwordHash: platformHash },
+    update: { passwordHash: platformHash, passwordChangedAt: null },
     create: { email: platformEmail, passwordHash: platformHash, nameAr: "مشغّل المنصة" },
   });
   console.log(`  ✓ Platform admin: ${platformAdmin.email}`);

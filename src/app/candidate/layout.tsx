@@ -13,7 +13,7 @@ export default async function CandidateLayout({ children }: { children: React.Re
   }
 
   return (
-    <PortalShell type="candidate">
+    <PortalShell type="candidate" ctx={ctx}>
       <CandidateHeartbeat />
       <AlertGate />
       <PushPermissionBanner />

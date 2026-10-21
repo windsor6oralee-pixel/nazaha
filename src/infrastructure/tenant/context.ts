@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/infrastructure/auth/auth";
-import { isPrincipalActive } from "@/infrastructure/auth/credentials.service";
+import { isPrincipalActive, toSessionDate } from "@/infrastructure/auth/credentials.service";
 
 export interface HRContext {
   kind: "hr";
@@ -9,6 +9,7 @@ export interface HRContext {
   role: string;
   nameAr: string;
   email: string | null;
+  sessionIssuedAt: Date | null;
 }
 
 export interface CandidateContext {
@@ -18,6 +19,7 @@ export interface CandidateContext {
   applicationId: string | null;
   nameAr: string;
   email: string | null;
+  sessionIssuedAt: Date | null;
 }
 
 // Platform admins have NO tenant context by design; they never satisfy requireHR/requireAuth.
@@ -26,6 +28,7 @@ export interface PlatformContext {
   adminId: string;
   nameAr: string;
   email: string | null;
+  sessionIssuedAt: Date | null;
 }
 
 export type TenantContext = HRContext | CandidateContext;
@@ -36,15 +39,23 @@ export function deny(status: 401 | 403 | 404, message?: string) {
 }
 
 // A valid JWT is necessary but not sufficient: the organization (and, for staff, the
-// user) must still be active right now. Suspension therefore takes effect within the
-// liveness cache TTL, not at token expiry.
+// user) must still be active right now. A session also dies the moment its account's
+// password is reset, because the session carries the time it was opened.
 export async function getTenantContext(): Promise<TenantContext | null> {
   const session = await auth();
   const u = session?.user;
   if (!u?.id || !u.organizationId) return null;
   if (u.sessionType !== "hr_user" && u.sessionType !== "candidate") return null;
 
-  if (!(await isPrincipalActive({ sessionType: u.sessionType, id: u.id, organizationId: u.organizationId }))) {
+  // تاريخ الجلسة يصل نصاً بعد عبوره JSON، فنحوّله هنا مرة واحدة.
+  const sessionIssuedAt = toSessionDate(u.sessionIssuedAt);
+
+  if (!(await isPrincipalActive({
+    sessionType: u.sessionType,
+    id: u.id,
+    organizationId: u.organizationId,
+    sessionIssuedAt,
+  }))) {
     return null;
   }
 
@@ -56,6 +67,7 @@ export async function getTenantContext(): Promise<TenantContext | null> {
       role: u.role ?? "",
       nameAr: u.nameAr,
       email: u.email ?? null,
+      sessionIssuedAt,
     };
   }
   return {
@@ -65,6 +77,7 @@ export async function getTenantContext(): Promise<TenantContext | null> {
     applicationId: u.applicationId ?? null,
     nameAr: u.nameAr,
     email: u.email ?? null,
+    sessionIssuedAt,
   };
 }
 
@@ -72,7 +85,24 @@ export async function getPlatformContext(): Promise<PlatformContext | null> {
   const session = await auth();
   const u = session?.user;
   if (!u?.id || u.sessionType !== "platform_admin") return null;
-  return { kind: "platform", adminId: u.id, nameAr: u.nameAr, email: u.email ?? null };
+  // نفس فحص الحيوية الذي يطبَّق على موظفي الجهات: تغيير كلمة المرور يُبطل
+  // الجلسات القديمة، وتعطيل الحساب يوقفه فوراً.
+  const sessionIssuedAt = toSessionDate(u.sessionIssuedAt);
+  if (!(await isPrincipalActive({
+    sessionType: "platform_admin",
+    id: u.id,
+    organizationId: "",
+    sessionIssuedAt,
+  }))) {
+    return null;
+  }
+  return {
+    kind: "platform",
+    adminId: u.id,
+    nameAr: u.nameAr,
+    email: u.email ?? null,
+    sessionIssuedAt,
+  };
 }
 
 export async function requireAuth(): Promise<TenantContext | NextResponse> {

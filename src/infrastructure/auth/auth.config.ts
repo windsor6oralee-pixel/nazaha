@@ -42,6 +42,10 @@ export const authConfig: NextAuthConfig = {
         token.sessionType = user.sessionType;
         token.organizationId = user.organizationId;
         token.applicationId = user.applicationId;
+        // تاريخ فتح الجلسة — يُضبط مرة واحدة عند الدخول ولا يُمسّ بعدها.
+        // لا يمكن الاعتماد على `iat` لأن NextAuth يعيد توقيع الرمز في كل طلب
+        // فتُحدَّث قيمته، فتفقد الجلسة معناها.
+        token.sessionIssuedAt = Date.now();
       }
       return token;
     },
@@ -54,6 +58,10 @@ export const authConfig: NextAuthConfig = {
         session.user.sessionType = token.sessionType as "hr_user" | "candidate" | "platform_admin";
         session.user.organizationId = token.organizationId as string;
         session.user.applicationId = token.applicationId as string | undefined;
+        // يُقارن بـ passwordChangedAt لإبطال كل جلسة أقدم من تغيير كلمة المرور.
+        if (typeof token.sessionIssuedAt === "number") {
+          session.user.sessionIssuedAt = new Date(token.sessionIssuedAt);
+        }
       }
       return session;
     },

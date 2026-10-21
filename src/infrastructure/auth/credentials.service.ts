@@ -139,37 +139,79 @@ export async function verifyPlatformCredentials(email: string, password: string)
 
 // ── Per-request liveness ─────────────────────────────────────────────────────
 // JWT sessions outlive database state, so tenant context re-checks that both the
-// organization and (for staff) the user are still active. Cached briefly to keep the
-// cost to one lightweight query per minute per principal.
+// organization and (for staff) the user are still active.
+//
+// No caching: a cached answer would let a session live for up to the cache TTL
+// after its password was reset — and password resets are exactly the moment a
+// stale session must not survive. The check is one indexed primary-key lookup,
+// and the shell no longer asks for the context a second time.
 
-const TTL_MS = 60_000;
-const liveness = new Map<string, { active: boolean; until: number }>();
-
-export function resetLivenessCache() {
-  liveness.clear();
+/**
+ * يحوّل تاريخ الجلسة إلى Date.
+ *
+ * الجلسة تمرّ عبر JSON داخل NextAuth، فقد يعود تاريخها نصاً لا كائن Date.
+ */
+export function toSessionDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export async function isPrincipalActive(principal: { sessionType: SessionType; id: string; organizationId: string }): Promise<boolean> {
-  if (principal.sessionType === "platform_admin") return true;
-  const key = `${principal.sessionType}:${principal.id}`;
-  const cached = liveness.get(key);
-  if (cached && cached.until > Date.now()) return cached.active;
+/**
+ * حالة الحساب — لا حالة الجلسة.
+ *
+ * الفصل مقصود: «الحساب نشط؟» حالة قاعدة البيانات، أما «هل هذه الجلسة أقدم من
+ * تغيير كلمة المرور؟» فحساب خالص يتم لكل طلب.
+ */
+export function isSessionStale(
+  sessionIssuedAt: Date | string | null | undefined,
+  passwordChangedAt: Date | null | undefined,
+): boolean {
+  if (!passwordChangedAt) return false;
+  const issued = toSessionDate(sessionIssuedAt);
+  // جلسة بلا تاريخ إصدار لا يمكن تقدير عمرها — تُبطَل احتياطاً.
+  if (!issued) return true;
+  return issued.getTime() < passwordChangedAt.getTime();
+}
 
-  let active = false;
+export async function isPrincipalActive(principal: {
+  sessionType: SessionType;
+  id: string;
+  organizationId: string;
+  sessionIssuedAt?: Date | string | null;
+}): Promise<boolean> {
+  if (principal.sessionType === "platform_admin") {
+    const a = await prisma.platformAdmin.findUnique({
+      where: { id: principal.id },
+      select: { isActive: true, passwordChangedAt: true },
+    });
+    return !!a && a.isActive && !isSessionStale(principal.sessionIssuedAt, a.passwordChangedAt);
+  }
+
   if (principal.sessionType === "hr_user") {
     const u = await prisma.user.findUnique({
       where: { id: principal.id },
-      select: { isActive: true, organizationId: true, organization: { select: { isActive: true } } },
+      select: {
+        isActive: true,
+        organizationId: true,
+        passwordChangedAt: true,
+        organization: { select: { isActive: true } },
+      },
     });
-    active = !!u && u.isActive && u.organization.isActive && u.organizationId === principal.organizationId;
-  } else {
-    const c = await prisma.candidate.findUnique({
-      where: { id: principal.id },
-      select: { organizationId: true, organization: { select: { isActive: true } } },
-    });
-    active = !!c && c.organization.isActive && c.organizationId === principal.organizationId;
+    return (
+      !!u &&
+      u.isActive &&
+      u.organization.isActive &&
+      u.organizationId === principal.organizationId &&
+      !isSessionStale(principal.sessionIssuedAt, u.passwordChangedAt)
+    );
   }
 
-  liveness.set(key, { active, until: Date.now() + TTL_MS });
-  return active;
+  const c = await prisma.candidate.findUnique({
+    where: { id: principal.id },
+    select: { organizationId: true, organization: { select: { isActive: true } } },
+  });
+  // المرشحون يدخلون برمز دعوة لا بكلمة مرور، فلا تغيير لكلمة المرور لديهم.
+  return !!c && c.organization.isActive && c.organizationId === principal.organizationId;
 }
