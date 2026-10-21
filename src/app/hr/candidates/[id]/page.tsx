@@ -42,9 +42,13 @@ export default async function CandidateDetailPage({ params }: Props) {
 
   const applicationId = appRow?.id ?? "";
   // Candidate already authorized above (tenant-scoped); the invitation lookup is by candidate id.
-  const [contract, invitation] = await Promise.all([
+  const [contract, invitation, account] = await Promise.all([
     applicationId ? getContractForApplication(orgId, applicationId) : Promise.resolve(null),
     getLatestInvitation(candidate.id),
+    db.candidate.findFirst({
+      where: { id, organizationId: orgId },
+      select: { loginEmail: true, accountActivatedAt: true, lastLoginAt: true },
+    }),
   ]);
 
   return (
@@ -115,6 +119,11 @@ export default async function CandidateDetailPage({ params }: Props) {
       <InvitationCodeCard
         candidateId={candidate.id}
         candidateEmail={candidate.email}
+        account={account ? {
+          loginEmail: account.loginEmail,
+          activatedAt: account.accountActivatedAt?.toISOString() ?? null,
+          lastLoginAt: account.lastLoginAt?.toISOString() ?? null,
+        } : null}
         invitation={invitation ? {
           code: invitation.code,
           status: invitation.status,

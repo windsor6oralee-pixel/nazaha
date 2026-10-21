@@ -23,7 +23,7 @@ export default async function NewCandidatePage() {
         <div>
           <h1 className="nz-page__title">إضافة مرشح جديد</h1>
           <p className="nz-page__lead">
-            أدخل بيانات المرشح المقبول وسيتم إرسال رمز الدعوة تلقائياً
+            أدخل بيانات المرشح المقبول وسيتم إرسال رمز التفعيل تلقائياً
           </p>
         </div>
       </div>

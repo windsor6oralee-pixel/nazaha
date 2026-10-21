@@ -234,7 +234,7 @@ export default async function CandidateDashboard() {
             </div>
           </Card>
 
-          {/* WhatsApp — رقم جهة المرشح، يظهر بعد دخوله برمز الدعوة */}
+          {/* WhatsApp — رقم جهة المرشح، يظهر بعد دخوله بحسابه */}
           <WhatsAppContact
             phone={org.contactPhone}
             orgName={org.nameAr}

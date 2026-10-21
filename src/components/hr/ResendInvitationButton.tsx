@@ -21,7 +21,7 @@ export function ResendInvitationButton({ candidateId, candidateEmail, onSent }: 
   const [isPending, start] = useTransition();
 
   function handleResend() {
-    if (!confirm(`سيُولَّد رمز دعوة جديد ويُرسل إلى ${candidateEmail}، ويتوقف الرمز الحالي عن العمل. هل أنت متأكد؟`)) return;
+    if (!confirm(`سيُولَّد رمز تفعيل جديد ويُرسل إلى ${candidateEmail}، ويتوقف الرمز الحالي عن العمل. هل أنت متأكد؟`)) return;
 
     setStatus("idle");
     setMessage(null);

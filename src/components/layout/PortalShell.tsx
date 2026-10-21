@@ -70,7 +70,7 @@ export async function PortalShell({
       sideColor={type === "hr" ? branding?.primaryColor ?? null : null}
       headerEnd={type === "hr" ? <OnlineBadge /> : undefined}
       asideExtra={
-        // زر واتساب للمرشح فقط — يظهر بعد دخوله برمز الدعوة، برقم جهة المرشح.
+        // زر واتساب للمرشح فقط — يظهر بعد دخوله بحسابه، برقم جهة المرشح.
         type === "candidate" ? (
           <WhatsAppContact
             phone={branding?.contactPhone ?? null}

@@ -20,7 +20,7 @@ const errorMessages: Record<string, { title: string; body: string; action: strin
   },
   Verification: {
     title: "رمز منتهي الصلاحية",
-    body: "انتهت صلاحية رمز الدخول أو تم استخدامه بالفعل. تواصل مع الموارد البشرية للحصول على رابط جديد.",
+    body: "انتهت صلاحية رمز التفعيل أو تم استخدامه بالفعل. تواصل مع الموارد البشرية للحصول على رمز جديد.",
     action: "المحاولة مرة أخرى",
     href: "/auth/candidate",
   },

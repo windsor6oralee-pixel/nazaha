@@ -13,6 +13,11 @@ export function candidateInvitation(data: {
   expiresInDays?: number;
 }): { subject: string; html: string } {
   const days = data.expiresInDays ?? 30;
+  // صفحة التفعيل — يُمرَّر الرمز رابطاً ليُملأ تلقائياً.
+  const activationUrl =
+    `${data.loginUrl.replace(/\/$/, "")}/auth/candidate/setup` +
+    `?code=${encodeURIComponent(data.rawToken)}`;
+  const siteUrl = data.loginUrl.replace(/\/$/, "");
 
   return {
     subject: `مرحباً ${data.candidateName} — دعوة الانضمام إلى ${data.organizationName}`,
@@ -244,35 +249,35 @@ export function candidateInvitation(data: {
     </div>
 
     <!-- Token -->
-    <p class="token-label">🔑 رمز الدخول الخاص بك</p>
+    <p class="token-label">🔑 رمز التفعيل الخاص بك</p>
     <div class="token-box">
       <div class="token-value">${data.rawToken}</div>
-      <div class="token-hint">انسخ هذا الرمز والصقه في صفحة الدخول</div>
+      <div class="token-hint">رمز لمرة واحدة — ينشئ حساب دخولك الدائم</div>
     </div>
 
     <!-- CTA -->
     <div class="cta-wrap">
-      <a href="${data.loginUrl}" class="cta-btn">الدخول إلى ملفي ←</a>
+      <a href="${activationUrl}" class="cta-btn">تفعيل حسابي ←</a>
     </div>
 
     <!-- Steps -->
     <p class="steps-title">كيف تبدأ؟</p>
     <div class="step">
       <div class="step-num">١</div>
-      <div class="step-text">افتح الرابط أعلاه أو اذهب إلى <strong>${data.loginUrl.replace(/\?.*/, "")}</strong></div>
+      <div class="step-text">اضغط «تفعيل حسابي» أعلاه (الرمز مُعبّأ مسبقاً)، أو افتح <strong>${siteUrl}/auth/candidate/setup</strong></div>
     </div>
     <div class="step">
       <div class="step-num">٢</div>
-      <div class="step-text">الصق رمز الدخول في الحقل المخصص واضغط «الدخول إلى ملفي»</div>
+      <div class="step-text">أدخل بريدك الإلكتروني واختر كلمة مرور، ثم أكّد التفعيل</div>
     </div>
     <div class="step">
       <div class="step-num">٣</div>
-      <div class="step-text">اتبع الخطوات لرفع مستنداتك وإتمام إجراءات الانضمام</div>
+      <div class="step-text">ادخل إلى بوابتك من الآن ببريدك وكلمة المرور، واتبع خطوات الانضمام</div>
     </div>
 
     <!-- Warning -->
     <div class="warning">
-      ⏳ هذا الرمز صالح لمدة <strong>${days} يوماً</strong> — يُرجى الدخول في أقرب وقت ممكن.
+      ⏳ هذا الرمز صالح لمدة <strong>${days} يوماً</strong> ويُستعمل <strong>مرة واحدة فقط</strong> — يُرجى تفعيل حسابك في أقرب وقت ممكن.
       إذا انتهت صلاحيته، تواصل مع الموارد البشرية في جهتك للحصول على رمز جديد.
     </div>
   </div>

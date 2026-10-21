@@ -107,7 +107,7 @@ export function CreateCandidateForm({ fields }: Props) {
             تم إنشاء المرشح بنجاح
           </h2>
           <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-            أُرسل رمز الدعوة إلى <strong dir="ltr" style={{ color: "var(--ink)" }}>{status.email}</strong>، ويمكنك أيضاً نسخه من هنا وإرساله بأي وسيلة.
+            أُرسل رمز التفعيل إلى <strong dir="ltr" style={{ color: "var(--ink)" }}>{status.email}</strong>، ويمكنك أيضاً نسخه من هنا وإرساله بأي وسيلة.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export function CreateCandidateForm({ fields }: Props) {
             title={
               <span className="inline-flex items-center gap-2">
                 <Icon name="privacy" size={24} label={false} style={{ color: "var(--green-700)" }} />
-                رمز الدعوة
+                رمز التفعيل
               </span>
             }
           >
@@ -332,7 +332,7 @@ export function CreateCandidateForm({ fields }: Props) {
 
       {/* Info note */}
       <Alert tone="info" icon="messages">
-        سيتم إنشاء حساب المرشح وإرسال رمز الدعوة تلقائياً إلى بريده الإلكتروني عند الحفظ
+        سيتم إنشاء ملف المرشح وإرسال رمز التفعيل تلقائياً إلى بريده الإلكتروني عند الحفظ — يحوّله المرشح إلى حساب دخول بكلمة مرور
       </Alert>
 
       <Button type="submit" block icon="messages" loading={isPending}>
