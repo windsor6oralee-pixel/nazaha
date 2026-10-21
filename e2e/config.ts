@@ -39,6 +39,17 @@ export const PLATFORM_PASSWORD = process.env.TEST_PLATFORM_PASSWORD ?? PASSWORD;
 /** كلمة مرور موظفي الجهات. */
 export const STAFF_PASSWORD = process.env.TEST_STAFF_PASSWORD ?? PASSWORD;
 
+/**
+ * حساب المرشح.
+ *
+ * المرشح يدخل بحساب دائم (بريد + كلمة مرور)، فلم يعد له رمز دعوة في الاختبار.
+ * كلمة مروره قد تكون منفصلة — كغيره من الأدوار.
+ */
+export const CANDIDATE_EMAIL =
+  process.env.TEST_CANDIDATE_EMAIL ?? "ahmed.omari@example.com";
+
+export const CANDIDATE_PASSWORD = process.env.TEST_CANDIDATE_PASSWORD ?? PASSWORD;
+
 /** حساب مشغّل المنصة. */
 export const PLATFORM_EMAIL = process.env.TEST_PLATFORM_EMAIL ?? "platform@nazaha.sa";
 

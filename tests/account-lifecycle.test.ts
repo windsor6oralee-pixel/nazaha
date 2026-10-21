@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { prisma } from "@/infrastructure/database/client";
 import {
   verifyHRCredentials,
-  verifyCandidateToken,
+  verifyCandidateCredentials,
   isPrincipalActive,
 } from "@/infrastructure/auth/credentials.service";
 
@@ -11,13 +11,15 @@ import {
 
 const HR_EMAIL = "salma.rashidi@mof.gov.sa";
 const HR_PASSWORD = process.env.SEED_DEV_HR_PASSWORD ?? "change-me-dev-only";
-// Fallback must equal the seed's fallback (prisma/seed.ts) — CI has no .env, so both sides use it.
-const CANDIDATE_TOKEN = process.env.SEED_DEV_CANDIDATE_TOKEN ?? "change-me-dev-token";
+// The seeded candidate account — the seed writes the login e-mail + the hash.
+const CANDIDATE_EMAIL = "ahmed.omari@example.com";
+const CANDIDATE_PASSWORD = process.env.SEED_DEV_CANDIDATE_PASSWORD ?? "change-me-dev-only";
 
 let orgId: string;
 let userId: string;
 let candidateId: string;
 let originalChangedAt: Date | null = null;
+let originalCandidateChangedAt: Date | null = null;
 
 async function setOrgActive(active: boolean) {
   await prisma.organization.update({ where: { id: orgId }, data: { isActive: active } });
@@ -25,33 +27,42 @@ async function setOrgActive(active: boolean) {
 async function setUserActive(active: boolean) {
   await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
 }
-// The seeded magic token is single-use; re-arm it so the candidate login can be exercised.
-async function rearmCandidateToken() {
-  const { createHash } = await import("node:crypto");
-  const tokenHash = createHash("sha256").update(CANDIDATE_TOKEN).digest("hex");
-  await prisma.verificationToken.updateMany({ where: { tokenHash }, data: { usedAt: null, expiresAt: new Date(Date.now() + 86_400_000) } });
+/** تصفير عدّاد المحاولات ورفع القفل — حتى لا يسرّب اختبارٌ أثره على آخر. */
+async function resetCandidateLockout() {
+  await prisma.candidate.update({
+    where: { id: candidateId },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
 }
 
 beforeAll(async () => {
   const user = await prisma.user.findUniqueOrThrow({ where: { email: HR_EMAIL }, select: { id: true, organizationId: true, passwordChangedAt: true } });
   orgId = user.organizationId;
   userId = user.id;
-  candidateId = (await prisma.candidate.findFirstOrThrow({ where: { organizationId: orgId, nationalId: "1098765432" } })).id;
+
+  const candidate = await prisma.candidate.findFirstOrThrow({
+    where: { organizationId: orgId, nationalId: "1098765432" },
+    select: { id: true, passwordChangedAt: true },
+  });
+  candidateId = candidate.id;
 
   // الجلسات في هذا الملف بلا تاريخ إصدار، فأي «تغيير كلمة مرور» سابق يجعلها
-  // باطلة احتياطاً. نُلغي الطابع ليختبر الإيقاف وحده.
+  // باطلة احتياطاً. نُلغي الطابع لنختبر الإيقاف وحده.
   originalChangedAt = user.passwordChangedAt;
+  originalCandidateChangedAt = candidate.passwordChangedAt;
   await prisma.user.update({ where: { id: userId }, data: { passwordChangedAt: null } });
+  await prisma.candidate.update({ where: { id: candidateId }, data: { passwordChangedAt: null } });
 });
 
 afterEach(async () => {
   await setOrgActive(true);
   await setUserActive(true);
-  await rearmCandidateToken();
+  await resetCandidateLockout();
 });
 
 afterAll(async () => {
   await prisma.user.update({ where: { id: userId }, data: { passwordChangedAt: originalChangedAt } });
+  await prisma.candidate.update({ where: { id: candidateId }, data: { passwordChangedAt: originalCandidateChangedAt } });
   await prisma.$disconnect();
 });
 
@@ -74,20 +85,21 @@ describe("login", () => {
     expect(await verifyHRCredentials(HR_EMAIL, "definitely-wrong")).toBeNull();
   });
 
-  it("candidate magic-link login is refused when the organization is suspended", async () => {
-    await rearmCandidateToken();
+  it("candidate login is refused when the organization is suspended", async () => {
     await setOrgActive(false);
-    expect(await verifyCandidateToken(CANDIDATE_TOKEN)).toBeNull();
-    // The token must NOT have been consumed by the refused attempt.
-    const { createHash } = await import("node:crypto");
-    const t = await prisma.verificationToken.findUniqueOrThrow({ where: { tokenHash: createHash("sha256").update(CANDIDATE_TOKEN).digest("hex") } });
-    expect(t.usedAt).toBeNull();
+    expect(await verifyCandidateCredentials(CANDIDATE_EMAIL, CANDIDATE_PASSWORD)).toBeNull();
   });
 
-  it("candidate magic-link login works and is single-use", async () => {
-    await rearmCandidateToken();
-    expect(await verifyCandidateToken(CANDIDATE_TOKEN)).toMatchObject({ sessionType: "candidate", organizationId: orgId });
-    expect(await verifyCandidateToken(CANDIDATE_TOKEN)).toBeNull();
+  it("candidate login works with the account's e-mail and password", async () => {
+    expect(await verifyCandidateCredentials(CANDIDATE_EMAIL, CANDIDATE_PASSWORD)).toMatchObject({
+      sessionType: "candidate",
+      organizationId: orgId,
+      id: candidateId,
+    });
+  });
+
+  it("candidate login is refused for a wrong password", async () => {
+    expect(await verifyCandidateCredentials(CANDIDATE_EMAIL, "definitely-wrong")).toBeNull();
   });
 });
 

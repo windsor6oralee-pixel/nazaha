@@ -2,11 +2,12 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import {
-  BASE_URL,
   OUT_DIR,
   PLATFORM_EMAIL,
   PLATFORM_PASSWORD,
   STAFF_PASSWORD,
+  CANDIDATE_EMAIL,
+  CANDIDATE_PASSWORD,
   CANDIDATE_NAME,
 } from "./config";
 
@@ -93,48 +94,14 @@ async function signInPlatform(page: Page, email: string) {
   await expect(page).toHaveURL((u) => u.pathname === "/platform", { timeout: 30_000 });
 }
 
-/** Signs in with an invitation code through the candidate portal. */
-async function signInCandidate(page: Page, token: string) {
+/** Signs in with the candidate's permanent account (e-mail + password). */
+async function signInCandidate(page: Page) {
   await page.goto("/auth/candidate");
-  await page.getByPlaceholder("الصق الرمز هنا...").fill(token);
+  await page.locator('input[type="email"]').fill(CANDIDATE_EMAIL);
+  await page.locator('input[type="password"]').fill(CANDIDATE_PASSWORD);
   await page.getByRole("button", { name: "الدخول إلى ملفي" }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/candidate", { timeout: 30_000 });
 }
-
-// ── fixture: a fresh invitation code ───────────────────────────────────────
-
-let candidateToken = "";
-
-/**
- * Invitation codes are single-use, so a fresh one is minted through the HR
- * portal before the candidate run: the HR admin asks for a resend and reads the
- * rotated code off the candidate profile.
- */
-test.beforeAll(async ({ browser }) => {
-  const ctx = await browser.newContext({
-    baseURL: BASE_URL,
-    locale: "ar-SA",
-    viewport: { width: 1440, height: 900 },
-  });
-  const page = await ctx.newPage();
-
-  await signInStaff(page, "admin@mof.gov.sa");
-  await page.goto("/hr/candidates");
-  const profileLink = page.getByRole("link", { name: `عرض ملف ${CANDIDATE_NAME}` }).first();
-  await expect(profileLink).toBeVisible();
-  const candidateId = (await profileLink.getAttribute("href"))?.split("/").pop() ?? "";
-  expect(candidateId).not.toBe("");
-
-  const res = await page.request.post(`/api/candidates/${candidateId}/resend-invitation`);
-  expect(res.ok()).toBeTruthy();
-
-  await page.goto(`/hr/candidates/${candidateId}`);
-  const code = (await page.locator('[aria-labelledby="invitation-code-title"] div.break-all').innerText()).trim();
-  expect(code).toMatch(/^[0-9a-f]{64}$/);
-  candidateToken = code;
-
-  await ctx.close();
-});
 
 // ── the matrix ─────────────────────────────────────────────────────────────
 
@@ -187,7 +154,7 @@ for (const role of STAFF_ROLES) {
       const link = page.getByRole("link", { name: `عرض ملف ${CANDIDATE_NAME}` }).first();
       await link.click();
       await expect(page).toHaveURL(/\/hr\/candidates\/.+/);
-      await expect(page.getByText("رمز الدعوة")).toBeVisible();
+      await expect(page.getByText("حساب دخول المرشح")).toBeVisible();
       await shot(page, `${role.key}--candidate-profile`);
     }
   });
@@ -201,7 +168,7 @@ test("HR officer is kept out of the administration area", async ({ page }) => {
 });
 
 test("candidate walks through the journey portal", async ({ page }) => {
-  await signInCandidate(page, candidateToken);
+  await signInCandidate(page);
   await expect(page.getByText(CANDIDATE_NAME).first()).toBeVisible();
   await shot(page, "06-candidate--dashboard");
 

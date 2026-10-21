@@ -1,13 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { BASE_URL, OUT_DIR, STAFF_PASSWORD, HR_EMAIL, CANDIDATE_NAME } from "./config";
+import {
+  BASE_URL,
+  OUT_DIR,
+  STAFF_PASSWORD,
+  HR_EMAIL,
+  CANDIDATE_EMAIL,
+  CANDIDATE_PASSWORD,
+  CANDIDATE_NAME,
+} from "./config";
 
 /**
  * WhatsApp contact affordance for the candidate portal.
  *
  * The button is driven by `Organization.contactPhone`, so this walkthrough sets
- * a number on the tenant, signs the candidate in with a fresh invitation code,
+ * a number on the tenant, signs the candidate in with their permanent account,
  * and checks the button appears with a working wa.me link — then puts the
  * tenant back the way it found it.
  *
@@ -32,28 +40,12 @@ async function signInStaff(page: Page) {
   await expect(page).toHaveURL((u) => u.pathname === "/hr", { timeout: 30_000 });
 }
 
-async function signInCandidate(page: Page, token: string) {
+async function signInCandidate(page: Page) {
   await page.goto("/auth/candidate");
-  await page.getByPlaceholder("الصق الرمز هنا...").fill(token);
+  await page.locator('input[type="email"]').fill(CANDIDATE_EMAIL);
+  await page.locator('input[type="password"]').fill(CANDIDATE_PASSWORD);
   await page.getByRole("button", { name: "الدخول إلى ملفي" }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/candidate", { timeout: 30_000 });
-}
-
-/** Rotates the invitation code and returns it — codes are single-use. */
-async function mintToken(page: Page): Promise<string> {
-  await page.goto("/hr/candidates");
-  const profileLink = page.getByRole("link", { name: `عرض ملف ${CANDIDATE_NAME}` }).first();
-  await expect(profileLink).toBeVisible();
-  const candidateId = (await profileLink.getAttribute("href"))?.split("/").pop() ?? "";
-  expect(candidateId).not.toBe("");
-
-  const res = await page.request.post(`/api/candidates/${candidateId}/resend-invitation`);
-  expect(res.ok()).toBeTruthy();
-
-  await page.goto(`/hr/candidates/${candidateId}`);
-  const code = (await page.locator('[aria-labelledby="invitation-code-title"] div.break-all').innerText()).trim();
-  expect(code).toMatch(/^[0-9a-f]{64}$/);
-  return code;
 }
 
 // The tenant always goes back to "no number configured", whatever happens.
@@ -88,14 +80,8 @@ test("HR admin sets the contact number through the organisation profile", async 
   await shot(page, "07-whatsapp--admin-organization");
 });
 
-test("candidate sees the WhatsApp button after signing in with the invitation code", async ({ page }) => {
-  // The HR session mints a fresh code, then the candidate signs in with it.
-  const staff = await page.context().newPage();
-  await signInStaff(staff);
-  const token = await mintToken(staff);
-  await staff.close();
-
-  await signInCandidate(page, token);
+test("candidate sees the WhatsApp button after signing in with their account", async ({ page }) => {
+  await signInCandidate(page);
 
   // The card on the dashboard.
   const card = page.getByText("تواصل معنا عبر واتساب");
@@ -127,9 +113,7 @@ test("the button disappears once the tenant clears the number", async ({ page })
   const res = await page.request.patch("/api/admin/organization", { data: { contactPhone: null } });
   expect(res.ok()).toBeTruthy();
 
-  // A fresh code, because the previous one was consumed by the sign-in.
-  const token = await mintToken(page);
-  await signInCandidate(page, token);
+  await signInCandidate(page);
 
   await expect(page.getByRole("link", { name: "تواصل عبر واتساب" })).toHaveCount(0);
   await expect(page.getByText("تواصل معنا عبر واتساب")).toHaveCount(0);

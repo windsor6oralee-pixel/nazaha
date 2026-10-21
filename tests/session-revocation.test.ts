@@ -16,6 +16,7 @@ const TEST_ADMIN_EMAIL = "revocation-test@nazaha.local";
 let orgId: string;
 let userId: string;
 let adminId: string;
+let candidateId: string;
 let originalChangedAt: Date | null = null;
 
 beforeAll(async () => {
@@ -26,6 +27,12 @@ beforeAll(async () => {
   userId = user.id;
   orgId = user.organizationId;
   originalChangedAt = user.passwordChangedAt;
+
+  const candidate = await prisma.candidate.findFirstOrThrow({
+    where: { organizationId: orgId, nationalId: "1098765432" },
+    select: { id: true },
+  });
+  candidateId = candidate.id;
 
   const admin = await prisma.platformAdmin.upsert({
     where: { email: TEST_ADMIN_EMAIL },
@@ -126,5 +133,45 @@ describe("live sessions after a password change", () => {
       sessionIssuedAt: new Date(Date.now() - 60_000),
     };
     expect(await isPrincipalActive(older)).toBe(true);
+  });
+
+  it("kills a candidate session issued before the change and keeps a newer one", async () => {
+    await prisma.candidate.update({
+      where: { id: candidateId },
+      data: { passwordChangedAt: new Date() },
+    });
+
+    const before = { sessionType: "candidate" as const, id: candidateId, organizationId: orgId };
+    const after = { ...before, sessionIssuedAt: new Date(Date.now() + 60_000) };
+    const older = { ...before, sessionIssuedAt: new Date(Date.now() - 60_000) };
+
+    expect(await isPrincipalActive(older)).toBe(false);
+    expect(await isPrincipalActive(after)).toBe(true);
+
+    await prisma.candidate.update({ where: { id: candidateId }, data: { passwordChangedAt: null } });
+  });
+
+  it("kills a candidate session that has no account any more", async () => {
+    const before = await prisma.candidate.findUniqueOrThrow({
+      where: { id: candidateId },
+      select: { accountActivatedAt: true },
+    });
+
+    await prisma.candidate.update({
+      where: { id: candidateId },
+      data: { accountActivatedAt: null },
+    });
+    const principal = {
+      sessionType: "candidate" as const,
+      id: candidateId,
+      organizationId: orgId,
+      sessionIssuedAt: new Date(Date.now() + 60_000),
+    };
+    expect(await isPrincipalActive(principal)).toBe(false);
+
+    await prisma.candidate.update({
+      where: { id: candidateId },
+      data: { accountActivatedAt: before.accountActivatedAt },
+    });
   });
 });
