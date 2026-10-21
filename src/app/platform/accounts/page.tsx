@@ -1,6 +1,6 @@
-import { KeyRound, ShieldCheck, UserCog, Users } from "lucide-react";
+import { KeyRound, ShieldCheck, UserCog, Users, UserRound } from "lucide-react";
 import { getPlatformContext } from "@/infrastructure/tenant";
-import { listPlatformAdmins, listTenantUsers } from "@/infrastructure/platform/account.service";
+import { listPlatformAdmins, listTenantUsers, listCandidateAccounts } from "@/infrastructure/platform/account.service";
 import { ResetPasswordControl } from "@/components/platform/ResetPasswordControl";
 
 /*
@@ -22,7 +22,11 @@ function isLocked(lockedUntil: Date | null): boolean {
 
 export default async function PlatformAccountsPage() {
   const ctx = await getPlatformContext();
-  const [admins, users] = await Promise.all([listPlatformAdmins(), listTenantUsers()]);
+  const [admins, users, candidates] = await Promise.all([
+    listPlatformAdmins(),
+    listTenantUsers(),
+    listCandidateAccounts(),
+  ]);
 
   // تجميع موظفي الجهة تحت جهتهم.
   const byOrg = new Map<string, { nameAr: string; users: typeof users }>();
@@ -153,6 +157,58 @@ export default async function PlatformAccountsPage() {
                 </ul>
               </div>
             ))
+          )}
+        </section>
+
+        {/* ── حسابات المرشحين ── */}
+        <section className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
+          <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--color-border)", background: "var(--color-surface-alt)" }}>
+            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--color-dark)" }}>
+              <UserRound className="w-4 h-4" style={{ color: "var(--color-gold)" }} /> حسابات المرشحين
+            </span>
+            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              {candidates.filter((c) => c.hasAccount).length} حساب مفعّل
+            </span>
+          </div>
+          {candidates.length === 0 ? (
+            <p className="p-10 text-center text-sm" style={{ color: "var(--color-text-muted)" }}>لا يوجد مرشحون</p>
+          ) : (
+            <ul className="divide-y" style={{ borderColor: "var(--color-border)" }}>
+              {candidates.map((c) => (
+                <li key={c.id} className="px-5 py-3.5 flex flex-wrap items-center gap-4">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: c.hasAccount ? "var(--color-primary-muted)" : "var(--color-surface-alt)" }}>
+                    <UserRound className="w-4 h-4" style={{ color: c.hasAccount ? "var(--color-primary)" : "var(--color-text-muted)" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--color-dark)" }}>{c.nameAr}</p>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-surface-alt)", color: "var(--color-text-muted)" }}>{c.organizationName}</span>
+                      {c.hasAccount ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-success-bg)", color: "var(--color-success)" }}>مفعّل</span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-surface-alt)", color: "var(--color-text-muted)" }}>بلا حساب</span>
+                      )}
+                      {isLocked(c.lockedUntil) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--color-error-bg)", color: "var(--color-error)" }}>مقفول</span>
+                      )}
+                    </div>
+                    <p dir="ltr" className="text-[11px] font-mono mt-0.5 text-right" style={{ color: "var(--color-text-muted)" }}>
+                      {c.loginEmail ?? c.contactEmail}
+                    </p>
+                  </div>
+                  <div className="hidden lg:block text-[11px] text-left" style={{ color: "var(--color-text-muted)" }}>
+                    <p>آخر دخول: {fmtDate(c.lastLoginAt)}</p>
+                    <p>تغيير كلمة المرور: {fmtDate(c.passwordChangedAt)}</p>
+                  </div>
+                  <ResetPasswordControl
+                    kind="candidate"
+                    id={c.id}
+                    email={c.loginEmail ?? c.contactEmail}
+                    label={c.hasAccount ? "ضبط كلمة المرور" : "إنشاء حساب"}
+                  />
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </div>

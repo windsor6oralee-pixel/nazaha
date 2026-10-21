@@ -191,6 +191,8 @@ export async function getAuditFilterOptions(db: TenantPrisma) {
 export const ACTION_LABELS: Record<string, string> = {
   "user.login":                "تسجيل دخول موظف",
   "candidate.login":           "تسجيل دخول مرشح",
+  "candidate.account_activated": "تفعيل حساب مرشح",
+  "candidate.password_reset": "ضبط كلمة مرور مرشح",
   "platform_admin.login":      "تسجيل دخول مشغّل المنصة",
   "candidate.created":         "إنشاء مرشح",
   "application.created":       "إنشاء طلب",

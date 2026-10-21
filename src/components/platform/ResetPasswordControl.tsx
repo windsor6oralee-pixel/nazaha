@@ -22,10 +22,10 @@ import { MIN_PASSWORD_LENGTH, generatePassword, validatePassword } from "@/lib/p
  * الحساب. كلمة المرور لا تغادر المتصفح ولا تُعاد في استجابة الخادم.
  */
 
-type Kind = "user" | "admin";
+type Kind = "user" | "admin" | "candidate";
 
 interface Props {
-  /** نوع الحساب: موظف جهة أو مشغّل منصة. */
+  /** نوع الحساب: موظف جهة أو مشغّل منصة أو مرشح. */
   kind: Kind;
   id: string;
   email: string;
@@ -63,7 +63,9 @@ export function ResetPasswordControl({ kind, id, email, isSelf = false, label }:
   const endpoint =
     kind === "admin"
       ? `/api/platform/admins/${id}/password`
-      : `/api/platform/users/${id}/password`;
+      : kind === "candidate"
+        ? `/api/platform/candidates/${id}/password`
+        : `/api/platform/users/${id}/password`;
 
   useEffect(() => {
     if (!open) return;
