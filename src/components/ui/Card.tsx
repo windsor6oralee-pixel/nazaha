@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icon, type IconName } from "./Icon";
 
@@ -50,20 +51,39 @@ export function Card({
   );
 }
 
-/* بطاقة المؤشر: رقم بخط latin 28/32 وتسمية caption وأيقونة icon-32 بلون green-700. */
+/* بطاقة المؤشر: رقم بخط latin 28/32 وتسمية caption وأيقونة icon-32 بلون green-700.
+   مع `href` تصبح بطاقة رابط: البطاقة كلها هدف الضغط وتنتقل إلى قائمة مُصفّاة. */
 export function StatCard({
-  value, label, icon, hint, className,
-}: { value: ReactNode; label: ReactNode; icon?: IconName; hint?: ReactNode; className?: string }) {
-  return (
-    <div className={cn("nz-stat", className)}>
+  value, label, icon, hint, href, className,
+}: { value: ReactNode; label: ReactNode; icon?: IconName; hint?: ReactNode; href?: string; className?: string }) {
+  const body = (
+    <>
       {icon && <Icon name={icon} size={32} label={false} className="nz-stat__icon" />}
       <div style={{ minWidth: 0 }}>
         <div className="nz-stat__num">{value}</div>
         <div className="nz-stat__label">{label}</div>
         {hint && <div className="nz-stat__hint">{hint}</div>}
       </div>
-    </div>
+      {href && (
+        <Icon
+          name="chevron"
+          size={16}
+          label={false}
+          className="nz-stat__go"
+        />
+      )}
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={cn("nz-stat nz-stat--link", className)}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={cn("nz-stat", className)}>{body}</div>;
 }
 
 export function EmptyState({

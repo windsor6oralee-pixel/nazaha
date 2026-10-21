@@ -1,6 +1,6 @@
 import { prisma } from "@/infrastructure/database/client";
-import { mapCandidate } from "./mappers";
-import type { Candidate, HRStat } from "@/types";
+import { mapCandidate, mapAppStatus } from "./mappers";
+import type { ApplicationStatus, Candidate, HRStat } from "@/types";
 
 // ── Shared Prisma include ────────────────────────────────────────────────────
 
@@ -81,27 +81,43 @@ export async function getCandidatesByOrganization(
 
 /**
  * HR dashboard statistics — always computed from DB state.
+ *
+ * Counts **candidates**, not applications: every candidate is counted once, under
+ * the status of their latest application — the exact status the candidates list
+ * shows. A counter and the list it links to can therefore never disagree.
  */
 export async function getHRStats(organizationId: string): Promise<HRStat> {
-  const counts = await prisma.application.groupBy({
-    by: ["status"],
+  const candidates = await prisma.candidate.findMany({
     where: { organizationId },
-    _count: { _all: true },
+    select: {
+      applications: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { status: true },
+      },
+    },
   });
 
-  const byStatus: Record<string, number> = {};
-  for (const row of counts) {
-    byStatus[row.status] = row._count._all;
+  const counts: Record<ApplicationStatus, number> = {
+    pending: 0,
+    in_progress: 0,
+    under_review: 0,
+    approved: 0,
+    rejected: 0,
+    completed: 0,
+  };
+  for (const c of candidates) {
+    counts[mapAppStatus(c.applications[0]?.status)] += 1;
   }
 
-  const total = counts.reduce((s, r) => s + r._count._all, 0);
-
   return {
-    total,
-    completed: (byStatus["COMPLETED"] ?? 0) + (byStatus["APPROVED"] ?? 0),
-    inProgress: byStatus["IN_PROGRESS"] ?? 0,
-    pendingAction: byStatus["PENDING"] ?? 0,
-    rejected: byStatus["REJECTED"] ?? 0,
+    total: candidates.length,
+    approved: counts.approved,
+    inProgress: counts.in_progress,
+    underReview: counts.under_review,
+    pendingAction: counts.pending,
+    completed: counts.completed,
+    rejected: counts.rejected,
   };
 }
 

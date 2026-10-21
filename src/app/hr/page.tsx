@@ -1,7 +1,9 @@
 import { StatCard, Card, Alert } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { CandidatesTable } from "@/components/hr/CandidateRow";
+import { type IconName } from "@/components/ui/Icon";
 import { auth } from "@/infrastructure/auth/auth";
+import type { ApplicationStatus } from "@/types";
 import {
   getCandidatesByOrganization,
   getHRStats,
@@ -18,6 +20,36 @@ export default async function HRDashboard() {
 
   const recentCandidates = candidates.slice(0, 5);
 
+  const pct = (value: number) =>
+    stats.total > 0 ? `${Math.round((value / stats.total) * 100)}% من الكل` : undefined;
+
+  /* كل عدّاد رابط: ينقل إلى قائمة المرشحين مُصفّاة بالحالة نفسها. */
+  const statCards: {
+    label: string;
+    value: number;
+    icon: IconName;
+    status: ApplicationStatus | "all";
+    hint?: string;
+  }[] = [
+    { label: "إجمالي المرشحين", value: stats.total, icon: "candidates", status: "all" },
+    { label: "مقبول", value: stats.approved, icon: "approved", status: "approved", hint: pct(stats.approved) },
+    { label: "قيد الإنجاز", value: stats.inProgress, icon: "pending", status: "in_progress" },
+    { label: "تحت المراجعة", value: stats.underReview, icon: "review", status: "under_review" },
+    { label: "يحتاج إجراء", value: stats.pendingAction, icon: "flag", status: "pending", hint: "يحتاج متابعة" },
+    { label: "مكتمل", value: stats.completed, icon: "integrity", status: "completed" },
+    { label: "مرفوض", value: stats.rejected, icon: "close", status: "rejected" },
+  ];
+
+  /* توزيع الحالات — كل الحالات الستّ حتى يكون المجموع 100%. */
+  const distribution = [
+    { label: "مقبول", value: stats.approved },
+    { label: "مكتمل", value: stats.completed },
+    { label: "قيد الإنجاز", value: stats.inProgress },
+    { label: "تحت المراجعة", value: stats.underReview },
+    { label: "يحتاج إجراء", value: stats.pendingAction },
+    { label: "مرفوض", value: stats.rejected },
+  ];
+
   return (
     <div className="nz-page">
       {/* Page Header */}
@@ -33,18 +65,22 @@ export default async function HRDashboard() {
         </ButtonLink>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — كل بطاقة عدّاد وزر تصفية في آن واحد */}
       <div className="nz-stats nz-stagger">
-        <StatCard label="إجمالي المرشحين" value={stats.total} icon="candidates" />
-        <StatCard
-          label="مكتمل"
-          value={stats.completed}
-          icon="approved"
-          hint={stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}% من الكل` : undefined}
-        />
-        <StatCard label="قيد الإنجاز" value={stats.inProgress} icon="pending" />
-        <StatCard label="يحتاج إجراء" value={stats.pendingAction} icon="flag" hint="يحتاج متابعة" />
-        <StatCard label="مرفوض" value={stats.rejected} icon="close" />
+        {statCards.map((card) => (
+          <StatCard
+            key={card.status}
+            label={card.label}
+            value={card.value}
+            icon={card.icon}
+            hint={card.hint}
+            href={
+              card.status === "all"
+                ? "/hr/candidates"
+                : `/hr/candidates?status=${card.status}`
+            }
+          />
+        ))}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -71,7 +107,13 @@ export default async function HRDashboard() {
               <p style={{ margin: 0 }}>
                 <strong className="font-numeric" style={{ color: "var(--ink)" }}>{stats.pendingAction}</strong> مرشحاً لديهم مستندات تحتاج مراجعتك.
               </p>
-              <ButtonLink href="/hr/candidates" variant="secondary" size="sm" icon="review" className="mt-4">
+              <ButtonLink
+                href="/hr/candidates?status=pending"
+                variant="secondary"
+                size="sm"
+                icon="review"
+                className="mt-4"
+              >
                 مراجعة المستندات
               </ButtonLink>
             </Alert>
@@ -80,13 +122,8 @@ export default async function HRDashboard() {
           {/* Distribution */}
           <Card title="توزيع الحالات">
             <div className="flex flex-col gap-4">
-              {[
-                { label: "مكتمل", value: stats.completed },
-                { label: "قيد الإنجاز", value: stats.inProgress },
-                { label: "يحتاج إجراء", value: stats.pendingAction },
-                { label: "مرفوض", value: stats.rejected },
-              ].map((item) => {
-                const pct = stats.total > 0 ? Math.round((item.value / stats.total) * 100) : 0;
+              {distribution.map((item) => {
+                const p = stats.total > 0 ? Math.round((item.value / stats.total) * 100) : 0;
                 return (
                   <div key={item.label}>
                     <div className="nz-progress__row">
@@ -98,10 +135,10 @@ export default async function HRDashboard() {
                       role="progressbar"
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-valuenow={pct}
+                      aria-valuenow={p}
                       aria-label={item.label}
                     >
-                      <div className="nz-progress__bar" style={{ transform: `scaleX(${pct / 100})` }} />
+                      <div className="nz-progress__bar" style={{ transform: `scaleX(${p / 100})` }} />
                     </div>
                   </div>
                 );

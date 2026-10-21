@@ -25,11 +25,22 @@ const appStatusMap: Record<string, ApplicationStatus> = {
   PENDING: "pending",
   IN_PROGRESS: "in_progress",
   UNDER_REVIEW: "under_review",
-  APPROVED: "completed",
+  APPROVED: "approved",
   COMPLETED: "completed",
   REJECTED: "rejected",
   WITHDRAWN: "rejected",
 };
+
+/**
+ * حالة الطلب كما يراها المستخدم.
+ *
+ * `APPROVED` (مقبول) و `COMPLETED` (مكتمل) حالتان مختلفتان: الأولى أن المُرَشَّح
+ * قُبل فدخَل مرحلة الانضمام، والثانية أنه أنهى مسيرته. دمجهما كان يُخفي
+ * المقبولين داخل «مكتمل» فلا يُعرف عددهم.
+ */
+export function mapAppStatus(status: string | null | undefined): ApplicationStatus {
+  return (appStatusMap[status ?? "PENDING"] ?? "pending") as ApplicationStatus;
+}
 
 const docStatusMap: Record<string, DocumentStatus> = {
   NOT_UPLOADED: "not_uploaded",
@@ -127,7 +138,7 @@ export function mapCandidate(
     department: db.department ?? "",
     acceptanceDate: db.acceptanceDate?.toISOString().split("T")[0] ?? "",
     startDate: db.expectedStartDate?.toISOString().split("T")[0],
-    status: (appStatusMap[app?.status ?? "PENDING"] ?? "pending") as ApplicationStatus,
+    status: mapAppStatus(app?.status),
     completionPercentage: computeCompletion(steps),
     hrWelcomeNote: app?.hrWelcomeNote ?? null,
     steps,

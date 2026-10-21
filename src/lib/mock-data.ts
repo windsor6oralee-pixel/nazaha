@@ -170,8 +170,10 @@ export const mockCandidates: Candidate[] = [
 
 export const mockHRStats: HRStat = {
   total: 48,
-  completed: 12,
-  inProgress: 19,
-  pendingAction: 11,
-  rejected: 6,
+  approved: 14,
+  completed: 6,
+  inProgress: 12,
+  underReview: 5,
+  pendingAction: 7,
+  rejected: 4,
 };

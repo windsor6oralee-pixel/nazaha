@@ -416,6 +416,26 @@ textarea.field { padding: 10px var(--space-16); line-height: 1.7; }
 .nz-stat__label { font-size: 13px; color: var(--ink-muted); }
 .nz-stat__hint { font-size: 13px; color: var(--ink-muted); margin-top: 2px; }
 
+/* بطاقة المؤشر كرابط — العدّاد نفسه مرشّح: الضغط ينقل إلى القائمة مُصفّاة.
+   الإشارات (الحد والسهم) تظهر عند التمرير أو التركيز فقط. */
+.nz-stat--link {
+  transition: border-color var(--motion-fast) var(--ease-standard),
+              background-color var(--motion-fast) var(--ease-standard);
+}
+.nz-stat--link .nz-stat__go {
+  flex: none; margin-inline-start: auto;
+  color: var(--green-700);
+  transform: rotate(90deg);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.nz-stat--link:hover { border-color: var(--green-700); background: var(--surface-000); }
+.nz-stat--link:hover .nz-stat__go { opacity: 1; }
+.nz-stat--link:focus-visible {
+  outline: 2px solid var(--green-700);
+  outline-offset: 2px;
+}
+
 /* ---------- Table ---------- */
 .nz-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-8); }
 .nz-table { width: 100%; border-collapse: collapse; font-size: 15px; }

@@ -52,9 +52,18 @@ export interface OnboardingStep {
 }
 
 export interface HRStat {
+  /** كل مرشحي الجهة. */
   total: number;
-  completed: number;
+  /** مقبول — الطلب مُعتمد والمرشح في مرحلة الانضمام. */
+  approved: number;
+  /** قيد الإنجاز. */
   inProgress: number;
+  /** تحت المراجعة. */
+  underReview: number;
+  /** يحتاج إجراء — لم يبدأ طلبه بعد. */
   pendingAction: number;
+  /** مكتمل — أنهى مسيرته. */
+  completed: number;
+  /** مرفوض — ويشمل المنسحب (الحالة نفسها في واجهة القائمة). */
   rejected: number;
 }

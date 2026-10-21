@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, EmptyState } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { CandidatesTable } from "@/components/hr/CandidateRow";
-import type { Candidate, ApplicationStatus } from "@/types";
+import { type StatusFilter } from "@/lib/candidate-filter";
+import type { Candidate } from "@/types";
 
-const filterOptions: { label: string; value: ApplicationStatus | "all" }[] = [
+const filterOptions: { label: string; value: StatusFilter }[] = [
   { label: "الكل", value: "all" },
+  { label: "مقبول", value: "approved" },
   { label: "قيد الإنجاز", value: "in_progress" },
   { label: "تحت المراجعة", value: "under_review" },
   { label: "يحتاج إجراء", value: "pending" },
@@ -18,11 +21,28 @@ const filterOptions: { label: string; value: ApplicationStatus | "all" }[] = [
 
 interface Props {
   candidates: Candidate[];
+  /** التصفية التي طُلبت عبر ?status= — تُستعمل عند فتح الصفحة من عدّاد اللوحة. */
+  initialStatus?: StatusFilter;
 }
 
-export function CandidatesClient({ candidates }: Props) {
-  const [filter, setFilter] = useState<ApplicationStatus | "all">("all");
+export function CandidatesClient({ candidates, initialStatus = "all" }: Props) {
+  const router = useRouter();
+  const [filter, setFilter] = useState<StatusFilter>(initialStatus);
   const [search, setSearch] = useState("");
+
+  /* تغيير التصفية يحدّث الرابط — يبقى الفلاتر قابلاً للمشاركة والرجوع إليه. */
+  function changeFilter(value: StatusFilter) {
+    setFilter(value);
+    const query = value === "all" ? "" : `?status=${value}`;
+    router.replace(`/hr/candidates${query}`, { scroll: false });
+  }
+
+  /* Follow ?status= when it changes under us (e.g. the sidebar link to the list). */
+  const [syncedStatus, setSyncedStatus] = useState(initialStatus);
+  if (initialStatus !== syncedStatus) {
+    setSyncedStatus(initialStatus);
+    setFilter(initialStatus);
+  }
 
   const filtered = candidates.filter((c) => {
     const matchesFilter = filter === "all" || c.status === filter;
@@ -40,7 +60,18 @@ export function CandidatesClient({ candidates }: Props) {
         <div>
           <h1 className="nz-page__title">إدارة المرشحين</h1>
           <p className="nz-page__lead">
-            <span className="font-numeric">{candidates.length}</span> مرشح في المنصة
+            {filter === "all" && search === "" ? (
+              <>
+                <span className="font-numeric">{candidates.length}</span> مرشح في المنصة
+              </>
+            ) : (
+              <>
+                <span className="font-numeric">{filtered.length}</span> مرشح مطابق
+                {filter !== "all" && (
+                  <> — {filterOptions.find((o) => o.value === filter)?.label}</>
+                )}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -67,7 +98,7 @@ export function CandidatesClient({ candidates }: Props) {
           label="تصفية حسب الحالة"
           icon="filter"
           value={filter}
-          onChange={(e) => setFilter(e.target.value as ApplicationStatus | "all")}
+          onChange={(e) => changeFilter(e.target.value as StatusFilter)}
         >
           {filterOptions.map((opt) => {
             const count = opt.value === "all"

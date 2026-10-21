@@ -12,7 +12,7 @@ export function getStatusLabel(status: ApplicationStatus): string {
     pending: "قيد الانتظار",
     in_progress: "قيد الإنجاز",
     under_review: "تحت المراجعة",
-    approved: "معتمد",
+    approved: "مقبول",
     rejected: "مرفوض",
     completed: "مكتمل",
   };
