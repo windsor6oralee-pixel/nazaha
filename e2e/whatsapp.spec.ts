@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { BASE_URL, OUT_DIR, PASSWORD, HR_EMAIL, CANDIDATE_NAME } from "./config";
+import { BASE_URL, OUT_DIR, STAFF_PASSWORD, HR_EMAIL, CANDIDATE_NAME } from "./config";
 
 /**
  * WhatsApp contact affordance for the candidate portal.
@@ -27,7 +27,7 @@ async function shot(page: Page, name: string) {
 async function signInStaff(page: Page) {
   await page.goto("/auth/login");
   await page.locator('input[type="email"]').fill(HR_EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(STAFF_PASSWORD);
   await page.getByRole("button", { name: "دخول", exact: true }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/hr", { timeout: 30_000 });
 }

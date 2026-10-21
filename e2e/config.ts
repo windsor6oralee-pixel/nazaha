@@ -28,6 +28,17 @@ export const OUT_DIR = path.resolve(process.env.E2E_OUT_DIR ?? "screenshots/role
 /** كلمة المرور المشتركة لحسابات الاختبار — من البيئة فقط. */
 export const PASSWORD = required("TEST_PASSWORD");
 
+/**
+ * كلمة مرور مشغّل المنصة.
+ *
+ * قد تكون منفصلة عن كلمة مرور موظفي الجهات: كلمة مرور المشغّل تُسلَّم
+ * لصاحبه وتُدوَّر وحدها، فلا يُفترض أن تساوي كلمة موظف.
+ */
+export const PLATFORM_PASSWORD = process.env.TEST_PLATFORM_PASSWORD ?? PASSWORD;
+
+/** كلمة مرور موظفي الجهات. */
+export const STAFF_PASSWORD = process.env.TEST_STAFF_PASSWORD ?? PASSWORD;
+
 /** حساب مشغّل المنصة. */
 export const PLATFORM_EMAIL = process.env.TEST_PLATFORM_EMAIL ?? "platform@nazaha.sa";
 

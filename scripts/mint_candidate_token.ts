@@ -9,10 +9,11 @@
  *
  *   E2E_BASE_URL   target deployment (default: local dev server on :3002)
  *   TEST_PASSWORD  password of the HR account (required — no default)
+ *   TEST_STAFF_PASSWORD  overrides it for the tenant staff accounts
  *   HR_EMAIL       HR account used to rotate the code (default: admin@mof.gov.sa)
  */
 import { chromium } from "@playwright/test";
-import { BASE_URL, PASSWORD, HR_EMAIL, CANDIDATE_NAME } from "../e2e/config";
+import { BASE_URL, STAFF_PASSWORD, HR_EMAIL, CANDIDATE_NAME } from "../e2e/config";
 
 async function main() {
   const browser = await chromium.launch();
@@ -21,7 +22,7 @@ async function main() {
 
   await page.goto("/auth/login");
   await page.locator('input[type="email"]').fill(HR_EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(STAFF_PASSWORD);
   await page.getByRole("button", { name: "دخول", exact: true }).click();
   await page.waitForURL((u) => u.pathname === "/hr", { timeout: 30_000 });
 

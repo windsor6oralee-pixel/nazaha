@@ -1,7 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { BASE_URL, OUT_DIR, PASSWORD, PLATFORM_EMAIL, CANDIDATE_NAME } from "./config";
+import {
+  BASE_URL,
+  OUT_DIR,
+  PLATFORM_EMAIL,
+  PLATFORM_PASSWORD,
+  STAFF_PASSWORD,
+  CANDIDATE_NAME,
+} from "./config";
 
 /**
  * Role-matrix walkthrough.
@@ -72,7 +79,7 @@ function slug(p: string) {
 async function signInStaff(page: Page, email: string) {
   await page.goto("/auth/login");
   await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(STAFF_PASSWORD);
   await page.getByRole("button", { name: "دخول", exact: true }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/hr", { timeout: 30_000 });
 }
@@ -81,7 +88,7 @@ async function signInStaff(page: Page, email: string) {
 async function signInPlatform(page: Page, email: string) {
   await page.goto("/platform/login");
   await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(PLATFORM_PASSWORD);
   await page.getByRole("button", { name: "دخول", exact: true }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/platform", { timeout: 30_000 });
 }

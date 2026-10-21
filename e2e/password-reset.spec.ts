@@ -1,7 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { BASE_URL, OUT_DIR, PASSWORD, PLATFORM_EMAIL } from "./config";
+import {
+  BASE_URL,
+  OUT_DIR,
+  PLATFORM_EMAIL,
+  PLATFORM_PASSWORD,
+  STAFF_PASSWORD,
+} from "./config";
 
 /**
  * ضبط كلمة المرور من حساب مشغّل المنصة.
@@ -29,7 +35,7 @@ async function signInStaff(page: Page, email: string, password: string) {
 async function signInPlatform(page: Page, email: string) {
   await page.goto("/platform/login");
   await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(PLATFORM_PASSWORD);
   await page.getByRole("button", { name: "دخول", exact: true }).click();
   await expect(page).toHaveURL((u) => u.pathname === "/platform", { timeout: 30_000 });
 }
@@ -58,7 +64,7 @@ test.describe("platform operator resets a staff password", () => {
     const page = await ctx.newPage();
     try {
       await signInPlatform(page, PLATFORM_EMAIL);
-      await resetPasswordAsPlatform(page, TARGET_EMAIL, PASSWORD);
+      await resetPasswordAsPlatform(page, TARGET_EMAIL, STAFF_PASSWORD);
     } finally {
       await ctx.close();
     }
@@ -83,7 +89,7 @@ test.describe("platform operator resets a staff password", () => {
     // جلسة قديمة للحساب المستهدف، تُفتح قبل الضبط.
     const victimCtx = await browser.newContext({ baseURL: BASE_URL, locale: "ar-SA" });
     const victim = await victimCtx.newPage();
-    await signInStaff(victim, TARGET_EMAIL, PASSWORD);
+    await signInStaff(victim, TARGET_EMAIL, STAFF_PASSWORD);
     await expect(victim).toHaveURL((u) => u.pathname === "/hr");
 
     // المشغّل يغيّر كلمة المرور.
@@ -109,7 +115,7 @@ test.describe("platform operator resets a staff password", () => {
     const old = await oldCtx.newPage();
     await old.goto("/auth/login");
     await old.locator('input[type="email"]').fill(TARGET_EMAIL);
-    await old.locator('input[type="password"]').fill(PASSWORD);
+    await old.locator('input[type="password"]').fill(STAFF_PASSWORD);
     await old.getByRole("button", { name: "دخول", exact: true }).click();
     await expect(old).toHaveURL((u) => u.pathname.startsWith("/auth/login"), { timeout: 30_000 });
     await oldCtx.close();
