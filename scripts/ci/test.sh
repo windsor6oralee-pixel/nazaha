@@ -49,6 +49,9 @@ step "Integration tests"
 npx vitest run
 
 step "Production build"
-npx next build
+# NODE_ENV is pinned here: if the shell that runs this script has a
+# development NODE_ENV (a common accident — `source .env` does it), Next
+# prerenders the static pages with the development React build and fails.
+NODE_ENV=production npx next build
 
 printf '\n\033[1;32m✔ all gates passed\033[0m\n'
