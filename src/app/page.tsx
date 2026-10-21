@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { ArrowLeft, Loader2, CheckCircle, FileText, Zap } from "lucide-react";
 import Image from "next/image";
 import { BentoShowcase } from "@/components/landing/BentoShowcase";
@@ -15,7 +14,8 @@ const features = [
 
 export default function HomePage() {
   const router = useRouter();
-  const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -23,19 +23,16 @@ export default function HomePage() {
     e.preventDefault();
     setError(null);
 
-    if (token.trim().length < 8) {
-      setError("الرمز غير مكتمل. انسخه كاملاً من رسالة القبول.");
-      return;
-    }
-
     startTransition(async () => {
-      const res = await signIn("candidate-token", {
-        token: token.trim(),
-        redirect: false,
+      const res = await fetch("/api/auth/candidate/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      if (res?.error) {
-        setError("الرمز غير صحيح أو انتهت صلاحيته. تواصل مع الموارد البشرية للحصول على رمز جديد.");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setError(data?.error ?? "تعذّر تسجيل الدخول — حاول مرة أخرى.");
         return;
       }
 
@@ -152,27 +149,64 @@ export default function HomePage() {
                 ابدأ رحلتك المهنية
               </h2>
               <p className="text-sm mt-1.5" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
-                أدخل رمز الدعوة الذي وصلك في رسالة القبول
+                سجّل الدخول ببريدك الإلكتروني وكلمة المرور
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
+                  htmlFor="home-email"
                   className="block text-sm font-medium mb-1.5"
                   style={{ color: "var(--color-dark)" }}
                 >
-                  رمز الدعوة
+                  البريد الإلكتروني
                 </label>
                 <input
-                  type="text"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="الصق الرمز هنا..."
+                  id="home-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
                   required
                   dir="ltr"
-                  autoComplete="off"
-                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none font-mono tracking-wider text-center"
+                  autoComplete="username"
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
+                  style={{
+                    borderColor: error ? "var(--color-error)" : "var(--color-border)",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                    transition: "border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard)",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "var(--color-primary)";
+                    e.target.style.boxShadow = "0 0 0 3px var(--color-primary-muted)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = error ? "var(--color-error)" : "var(--color-border)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="home-password"
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--color-dark)" }}
+                >
+                  كلمة المرور
+                </label>
+                <input
+                  id="home-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  required
+                  dir="ltr"
+                  autoComplete="current-password"
+                  className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
                   style={{
                     borderColor: error ? "var(--color-error)" : "var(--color-border)",
                     background: "var(--color-surface)",
@@ -234,7 +268,10 @@ export default function HomePage() {
               style={{ borderColor: "var(--color-border)" }}
             >
               <p className="text-xs" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
-                لم تجد رمز الدعوة؟ تواصل مع الموارد البشرية في جهتك مباشرةً
+                لم تُفعّل حسابك بعد؟{" "}
+                <a href="/auth/candidate/setup" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
+                  فعّله برمز الدعوة
+                </a>
               </p>
             </div>
           </div>

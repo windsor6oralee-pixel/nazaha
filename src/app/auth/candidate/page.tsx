@@ -2,8 +2,7 @@
 
 import { useState, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { KeyRound, Loader2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, ArrowRight } from "lucide-react";
 import { NazahaLogo } from "@/components/ui/NazahaLogo";
 import { safeCallbackUrl } from "@/lib/safe-redirect";
 
@@ -12,7 +11,9 @@ function CandidateLoginPageInner() {
   const router = useRouter();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/candidate");
 
-  const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -20,19 +21,16 @@ function CandidateLoginPageInner() {
     e.preventDefault();
     setError(null);
 
-    if (token.trim().length < 8) {
-      setError("الرمز المُدخل غير صحيح. تأكد من نسخه كاملاً من رسالة الدعوة.");
-      return;
-    }
-
     startTransition(async () => {
-      const res = await signIn("candidate-token", {
-        token: token.trim(),
-        redirect: false,
+      const res = await fetch("/api/auth/candidate/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      if (res?.error) {
-        setError("الرمز غير صحيح أو منتهي الصلاحية. تواصل مع الموارد البشرية للحصول على رابط جديد.");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setError(data?.error ?? "تعذّر تسجيل الدخول — حاول مرة أخرى.");
         return;
       }
 
@@ -63,34 +61,27 @@ function CandidateLoginPageInner() {
                 دخول المرشح
               </h1>
               <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                أدخل رمز الدعوة الذي أُرسل إليك
+                سجّل الدخول ببريدك الإلكتروني وكلمة المرور
               </p>
             </div>
           </div>
 
-          {/* Info box */}
-          <div className="rounded-xl p-3 mb-5 text-sm"
-            style={{ background: "var(--color-primary-muted)", color: "var(--color-primary)" }}>
-            <p>
-              ستجد رمز الدخول في البريد الإلكتروني المُرسَل إليك من قِبل إدارة الموارد البشرية
-              عند قبولك في الوظيفة.
-            </p>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5"
+              <label htmlFor="candidate-email" className="block text-sm font-medium mb-1.5"
                 style={{ color: "var(--color-dark)" }}>
-                رمز الدخول
+                البريد الإلكتروني
               </label>
               <input
-                type="text"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="الصق الرمز هنا..."
+                id="candidate-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
                 required
+                autoComplete="username"
                 dir="ltr"
-                className="w-full px-4 py-3 rounded-xl border outline-none transition-all font-mono tracking-wider text-center"
+                className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
                 style={{
                   borderColor: error ? "var(--color-error)" : "var(--color-border)",
                   background: "var(--color-surface)",
@@ -106,6 +97,50 @@ function CandidateLoginPageInner() {
                   e.target.style.boxShadow = "none";
                 }}
               />
+            </div>
+
+            <div>
+              <label htmlFor="candidate-password" className="block text-sm font-medium mb-1.5"
+                style={{ color: "var(--color-dark)" }}>
+                كلمة المرور
+              </label>
+              <div className="relative">
+                <input
+                  id="candidate-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  required
+                  autoComplete="current-password"
+                  dir="ltr"
+                  className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
+                  style={{
+                    borderColor: error ? "var(--color-error)" : "var(--color-border)",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                    fontSize: "1rem",
+                    paddingLeft: 44,
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "var(--color-primary)";
+                    e.target.style.boxShadow = "0 0 0 3px var(--color-primary-muted)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = error ? "var(--color-error)" : "var(--color-border)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  className="absolute top-1/2 -translate-y-1/2 p-2 rounded-lg"
+                  style={{ left: 6, color: "var(--color-text-muted)" }}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -141,8 +176,16 @@ function CandidateLoginPageInner() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t text-center"
+          <div className="mt-6 pt-4 border-t space-y-2 text-center"
             style={{ borderColor: "var(--color-border)" }}>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+              لم تُفعّل حسابك بعد؟{" "}
+              <a href="/auth/candidate/setup"
+                className="font-medium hover:underline"
+                style={{ color: "var(--color-primary)" }}>
+                فعّل حسابك برمز الدعوة
+              </a>
+            </p>
             <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
               هل أنت من الموارد البشرية؟{" "}
               <a href="/auth/login"
@@ -153,15 +196,6 @@ function CandidateLoginPageInner() {
             </p>
           </div>
         </div>
-
-        {/* Dev hint — value comes from SEED_DEV_CANDIDATE_TOKEN in .env */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-4 p-3 rounded-xl text-xs border"
-            style={{ background: "#FFF8E1", borderColor: "#F9C74F", color: "#7A5500" }}>
-            <p className="font-bold mb-1">رمز التطوير (SEED_DEV_CANDIDATE_TOKEN):</p>
-            <p style={{ color: "#999" }}>راجع .env للقيمة الفعلية</p>
-          </div>
-        )}
       </div>
     </div>
   );
