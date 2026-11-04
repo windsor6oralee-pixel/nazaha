@@ -67,7 +67,12 @@ export function formatPhoneDisplay(digits: string, countryCode: string = DEFAULT
 
 /** الرسالة الافتتاحية التي تُرسل تلقائيا مع محادثة المرشح. */
 export function whatsappGreeting(opts: { candidateName?: string | null; orgName?: string | null }): string {
-  const who = opts.candidateName?.trim() ? `أنا ${opts.candidateName.trim()}` : "أنا مرشح";
-  const org = opts.orgName?.trim() ? ` في ${opts.orgName.trim()}` : "";
-  return `السلام عليكم، ${who}${org}. أود الاستفسار عن إجراءات الانضمام للعمل والمسندات المطلوبة.`;
+  const name = opts.candidateName?.trim();
+  const org  = opts.orgName?.trim();
+  if (name && org) {
+    return `مرحباً، أنا ${name}، أحد المقبولين للتوظيف لدى ${org}، وأرغب في الاستفسار عن استكمال إجراءات ومتطلبات التوظيف.`;
+  }
+  const who   = name ? `أنا ${name}` : "أنا مرشح";
+  const where = org  ? ` في ${org}`  : "";
+  return `السلام عليكم، ${who}${where}. أود الاستفسار عن إجراءات الانضمام للعمل والمستندات المطلوبة.`;
 }

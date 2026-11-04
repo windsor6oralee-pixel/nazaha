@@ -1,4 +1,5 @@
-import { Building2, Users, UserCheck } from "lucide-react";
+import Link from "next/link";
+import { Building2, Users, UserCheck, Mail } from "lucide-react";
 import { listOrganizations } from "@/infrastructure/platform/provisioning.service";
 import { CreateOrganizationForm } from "@/components/platform/CreateOrganizationForm";
 import { OrganizationActiveToggle } from "@/components/platform/OrganizationActiveToggle";
@@ -46,6 +47,14 @@ export default async function PlatformHomePage() {
                     <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {o._count.users}</span>
                     <span className="flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" /> {o._count.candidates}</span>
                   </div>
+                  <Link
+                    href={`/platform/organizations/${o.id}/sending`}
+                    className="hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border transition-colors"
+                    style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}
+                    title="خطة إرسال البريد"
+                  >
+                    <Mail className="w-3 h-3" /> البريد
+                  </Link>
                   <OrganizationActiveToggle id={o.id} isActive={o.isActive} nameAr={o.nameAr} />
                 </li>
               ))}

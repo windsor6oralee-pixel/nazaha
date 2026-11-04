@@ -14,7 +14,7 @@ const filterOptions: { label: string; value: StatusFilter }[] = [
   { label: "مقبول", value: "approved" },
   { label: "قيد الإنجاز", value: "in_progress" },
   { label: "تحت المراجعة", value: "under_review" },
-  { label: "يحتاج إجراء", value: "pending" },
+  { label: "بانتظار قبول العرض", value: "pending" },
   { label: "مكتمل", value: "completed" },
   { label: "مرفوض", value: "rejected" },
 ];

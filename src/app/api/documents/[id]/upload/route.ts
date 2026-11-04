@@ -5,8 +5,10 @@ import {
   validateUploadedFile,
   mimeToExtension,
 } from "@/infrastructure/storage/file-validation";
-import { getNotifier, templates } from "@/infrastructure/notifications";
+import { getOrgNotifier, templates } from "@/infrastructure/notifications";
 import { requireAuth, tenantPrisma, deny } from "@/infrastructure/tenant";
+import { uploadBlockedReason } from "@/infrastructure/applications/lifecycle";
+import { refreshApplicationProgress } from "@/infrastructure/applications/lifecycle.service";
 
 export async function POST(
   request: NextRequest,
@@ -30,6 +32,7 @@ export async function POST(
         select: {
           candidateId: true,
           id: true,
+          status: true,
           candidate: { select: { nameAr: true } },
         },
       },
@@ -37,6 +40,9 @@ export async function POST(
   });
 
   if (!document) return deny(404, "المستند غير موجود");
+
+  const blocked = uploadBlockedReason(document.application.status, document.status);
+  if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
 
   // ── 3. Parse multipart form ────────────────────────────────
   let formData: FormData;
@@ -109,12 +115,18 @@ export async function POST(
     },
   });
 
-  // ── 10. Notify HR officers in this organization (fire-and-forget) ──
-  db.user.findMany({
-    where: { isActive: true },
-    select: { email: true },
-  }).then((hrUsers) => {
-    const notifier = getNotifier();
+  // ── 10. Steps and status follow the documents ─────────────
+  await refreshApplicationProgress(
+    ctx.organizationId,
+    document.application.id,
+    ctx.kind === "hr" ? { kind: "USER", userId: ctx.userId } : { kind: "CANDIDATE", candidateId: ctx.candidateId },
+  );
+
+  // ── 11. Notify the HR reviewers of this organization (fire-and-forget) ──
+  Promise.all([
+    db.user.findMany({ where: { isActive: true }, select: { email: true } }),
+    getOrgNotifier(ctx.organizationId),
+  ]).then(([hrUsers, notifier]) => {
     for (const hr of hrUsers) {
       notifier.send({
         to: hr.email,

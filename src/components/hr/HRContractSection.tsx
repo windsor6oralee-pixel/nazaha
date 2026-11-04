@@ -9,6 +9,8 @@ import { Icon } from "@/components/ui/Icon";
 
 interface HRContractSectionProps {
   applicationId: string;
+  /** العقد يُصدر بعد اعتماد الملف فقط. */
+  canIssue: boolean;
   existingContract: { id: string; nameAr: string; status: string; generatedAt: string } | null;
 }
 
@@ -28,7 +30,7 @@ const CONTRACT_TONE: Record<string, BadgeTone> = {
   CANCELLED: "rejected",
 };
 
-export function HRContractSection({ applicationId, existingContract }: HRContractSectionProps) {
+export function HRContractSection({ applicationId, canIssue, existingContract }: HRContractSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +92,9 @@ export function HRContractSection({ applicationId, existingContract }: HRContrac
       ) : (
         <div className="flex flex-col gap-4">
           <p className="ds-caption" style={{ margin: 0, color: "var(--ink-muted)" }}>
-            لم يُنشأ عقد بعد. أنشئ العقد ليتمكن المرشح من مراجعته والتوقيع عليه.
+            {canIssue
+              ? "لم يُنشأ عقد بعد. أنشئ العقد ليتمكن المرشح من مراجعته والتوقيع عليه."
+              : "يُصدر العقد بعد اعتماد ملف المرشح من مدير الموارد البشرية."}
           </p>
           {error && <Alert tone="error">{error}</Alert>}
           <Button
@@ -99,6 +103,7 @@ export function HRContractSection({ applicationId, existingContract }: HRContrac
             icon="documents"
             onClick={generateContract}
             loading={isPending}
+            disabled={!canIssue}
           >
             {isPending ? "جارٍ الإنشاء..." : "إنشاء عقد العمل"}
           </Button>

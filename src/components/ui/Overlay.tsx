@@ -39,16 +39,28 @@ function useOverlay(open: boolean, onClose: () => void) {
     return () => clearTimeout(t);
   }, [open, mounted]);
 
+  // Latest onClose stays in a ref so the keydown effect need not re-run — otherwise
+  // every parent re-render (e.g. per keystroke) would re-mount focus and steal the caret.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Initial focus: runs ONCE per open — not on every parent re-render.
   useEffect(() => {
     if (!mounted || closing) return;
     const panel = panelRef.current;
     const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? panel)?.focus();
+  }, [mounted, closing]);
+
+  // Keydown + body-scroll lock: stable across re-renders.
+  useEffect(() => {
+    if (!mounted || closing) return;
+    const panel = panelRef.current;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
+      if (e.key === "Escape") { e.stopPropagation(); onCloseRef.current(); return; }
       if (e.key !== "Tab" || !panel) return;
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (!items.length) return;
@@ -61,7 +73,7 @@ function useOverlay(open: boolean, onClose: () => void) {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [mounted, closing, onClose]);
+  }, [mounted, closing]);
 
   return { mounted, closing, panelRef };
 }

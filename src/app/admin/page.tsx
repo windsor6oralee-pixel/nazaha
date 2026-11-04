@@ -1,23 +1,37 @@
 import Link from "next/link";
-import { Building2, Mail, FileSignature, ListChecks, ScrollText, ChevronLeft } from "lucide-react";
+import { Building2, Mail, FileSignature, ListChecks, ScrollText, ChevronLeft, UsersRound } from "lucide-react";
 import { getTenantContext } from "@/infrastructure/tenant";
 import { getOrganizationProfile } from "@/infrastructure/services/organization.service";
 import { getSmtpConfig } from "@/infrastructure/notifications/smtp-config.service";
 import { listTemplates } from "@/infrastructure/contracts/contract-template.service";
 import { listFieldDefinitions } from "@/infrastructure/custom-fields/field.service";
+import { listStaff } from "@/infrastructure/services/staff.service";
 
 export default async function AdminHubPage() {
   const ctx = await getTenantContext();
   const orgId = ctx!.organizationId;
-  const [profile, smtp, templates, fields] = await Promise.all([
+  const isAdmin = ctx?.kind === "hr" && ctx.role === "admin";
+  const [profile, smtp, templates, fields, staff] = await Promise.all([
     getOrganizationProfile(orgId),
     getSmtpConfig(orgId),
     listTemplates(orgId),
     listFieldDefinitions(orgId),
+    isAdmin ? listStaff(orgId) : Promise.resolve([]),
   ]);
+  const activeStaff = staff.filter((u) => u.isActive).length;
   const activeTemplates = templates.filter((t) => t.isActive).length;
 
   const cards = [
+    ...(isAdmin
+      ? [{
+          href: "/admin/users",
+          icon: UsersRound,
+          title: "الموظفون والصلاحيات",
+          desc: "حسابات فريق الموارد البشرية وأدوارهم",
+          status: `${activeStaff} حساب نشط`,
+          ok: activeStaff > 0,
+        }]
+      : []),
     {
       href: "/admin/audit",
       icon: ScrollText,

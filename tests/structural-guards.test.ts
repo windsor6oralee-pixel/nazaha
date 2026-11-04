@@ -58,4 +58,23 @@ describe("structural guards", () => {
       .map((f) => relative(ROOT, f));
     expect(unsanitized).toEqual([]);
   });
+
+  // A tenant model missing from tenantPrisma runs without app.current_org: its strict
+  // RLS policy then hides every row (this is how candidate alerts silently broke).
+  it("every model with an organizationId is scoped in tenantPrisma", () => {
+    const schema = readFileSync(join(ROOT, "prisma", "schema.prisma"), "utf8");
+    const scoped = readFileSync(join(ROOT, "src", "infrastructure", "tenant", "scoped-prisma.ts"), "utf8");
+    const tenantModels = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)]
+      .filter(([, , body]) => /^\s+organizationId\s+String\b/m.test(body))
+      .map(([, name]) => name[0].toLowerCase() + name.slice(1));
+    expect(tenantModels.length).toBeGreaterThan(5);
+    const missing = tenantModels.filter((m) => !new RegExp(`^\\s+${m}:`, "m").test(scoped));
+    expect(missing).toEqual([]);
+  });
+
+  it("every /api/hr route requires an HR session", () => {
+    const hrRoutes = files.filter((f) => f.includes(join("api", "hr")) && f.endsWith("route.ts"));
+    const open = hrRoutes.filter((f) => !/requireHR\(/.test(readFileSync(f, "utf8"))).map((f) => relative(ROOT, f));
+    expect(open).toEqual([]);
+  });
 });

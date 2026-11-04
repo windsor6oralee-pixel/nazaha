@@ -4,9 +4,15 @@ import { Badge } from "@/components/ui/Badge";
 import { HRDocumentCard } from "@/components/hr/HRDocumentCard";
 import { HRContractSection } from "@/components/hr/HRContractSection";
 import { HRPreboardingPanel } from "@/components/hr/HRPreboardingPanel";
+import { HRDirectiveEditor } from "@/components/hr/HRDirectiveEditor";
+import { CandidateEmailLog } from "@/components/hr/CandidateEmailLog";
 import { ProgressTracker } from "@/components/candidate/ProgressTracker";
 import { InvitationCodeCard } from "@/components/hr/InvitationCodeCard";
 import { SendAlertButton } from "@/components/hr/SendAlertButton";
+import { ApplicationLifecyclePanel } from "@/components/hr/ApplicationLifecyclePanel";
+import { ApplicationTimeline } from "@/components/hr/ApplicationTimeline";
+import { getApplicationLifecycle } from "@/infrastructure/applications/lifecycle.service";
+import { APPLICATION_STATUS_AR } from "@/infrastructure/applications/lifecycle";
 import { getLatestInvitation } from "@/infrastructure/services/invitation.service";
 import {
   getCandidateById,
@@ -42,13 +48,22 @@ export default async function CandidateDetailPage({ params }: Props) {
 
   const applicationId = appRow?.id ?? "";
   // Candidate already authorized above (tenant-scoped); the invitation lookup is by candidate id.
-  const [contract, invitation, account] = await Promise.all([
+  const [contract, invitation, account, lifecycle, history] = await Promise.all([
     applicationId ? getContractForApplication(orgId, applicationId) : Promise.resolve(null),
     getLatestInvitation(candidate.id),
     db.candidate.findFirst({
       where: { id, organizationId: orgId },
       select: { loginEmail: true, accountActivatedAt: true, lastLoginAt: true },
     }),
+    applicationId ? getApplicationLifecycle(orgId, applicationId, ctx.role) : Promise.resolve(null),
+    applicationId
+      ? db.auditLog.findMany({
+          where: { applicationId },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: { id: true, action: true, actorType: true, createdAt: true, metadata: true, user: { select: { nameAr: true } } },
+        })
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -116,6 +131,17 @@ export default async function CandidateDetailPage({ params }: Props) {
         )}
       </div>
 
+      {lifecycle && (
+        <ApplicationLifecyclePanel
+          applicationId={lifecycle.applicationId}
+          status={lifecycle.status}
+          statusLabel={APPLICATION_STATUS_AR[lifecycle.status]}
+          statusReason={lifecycle.statusReason}
+          statusChangedAt={lifecycle.statusChangedAt?.toISOString() ?? null}
+          actions={lifecycle.actions}
+        />
+      )}
+
       <InvitationCodeCard
         candidateId={candidate.id}
         candidateEmail={candidate.email}
@@ -143,9 +169,14 @@ export default async function CandidateDetailPage({ params }: Props) {
             />
           )}
 
+          {applicationId && <HRDirectiveEditor applicationId={applicationId} />}
+
+          <CandidateEmailLog candidateId={candidate.id} />
+
           {applicationId && (
             <HRContractSection
               applicationId={applicationId}
+              canIssue={lifecycle?.status === "APPROVED"}
               existingContract={contract ? {
                 id: contract.id,
                 nameAr: contract.nameAr,
@@ -161,6 +192,17 @@ export default async function CandidateDetailPage({ params }: Props) {
               candidateName={candidate.name}
             />
           )}
+
+          <ApplicationTimeline
+            entries={history.map((h) => ({
+              id: h.id,
+              action: h.action,
+              actorType: h.actorType,
+              actorName: h.user?.nameAr ?? null,
+              createdAt: h.createdAt,
+              metadata: h.metadata,
+            }))}
+          />
         </div>
 
         {/* Documents */}

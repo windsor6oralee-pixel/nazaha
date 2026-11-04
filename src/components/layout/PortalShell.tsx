@@ -30,6 +30,8 @@ export async function PortalShell({
             items: [
               { href: "/hr", label: "لوحة التحكم", icon: "dashboard", exact: true },
               { href: "/hr/candidates", label: "المرشحون", icon: "candidates" },
+              { href: "/hr/directives/bulk", label: "إرسال جماعي", icon: "messages" },
+              { href: "/hr/emails", label: "سجل البريد", icon: "messages" },
               { href: "/hr/reports", label: "التقارير", icon: "reports" },
             ],
           },
@@ -39,8 +41,14 @@ export async function PortalShell({
                   label: "الإدارة",
                   items: [
                     { href: "/admin", label: "الإعدادات", icon: "settings", exact: true },
+                    ...(ctx.kind === "hr" && ctx.role === "admin"
+                      ? [{ href: "/admin/users", label: "الموظفون", icon: "candidates" as const }]
+                      : []),
                     { href: "/admin/organization", label: "هوية الجهة", icon: "profile" },
                     { href: "/admin/candidate-fields", label: "الحقول المخصصة", icon: "filter" },
+                    { href: "/admin/documents", label: "المستندات المطلوبة", icon: "documents" },
+                    { href: "/admin/directive-templates", label: "قوالب التوجيهات", icon: "messages" },
+                    { href: "/admin/email-templates", label: "قوالب البريد", icon: "messages" },
                     { href: "/admin/contracts", label: "قوالب العقود", icon: "justice" },
                     { href: "/admin/settings", label: "خادم البريد", icon: "messages" },
                     { href: "/admin/audit", label: "سجل التدقيق", icon: "integrity" },

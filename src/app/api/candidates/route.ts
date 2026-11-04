@@ -3,6 +3,11 @@ import { createCandidate } from "@/infrastructure/services/candidate.service";
 import { requireHR } from "@/infrastructure/tenant";
 import { listFieldDefinitions, validateValues } from "@/infrastructure/custom-fields/field.service";
 
+// SMTP handshakes against Gmail can take 5–15 s per candidate; give the route
+// enough headroom to finish, otherwise Vercel's 10 s default cuts the response.
+export const maxDuration = 60;
+export const runtime = "nodejs";
+
 interface Body {
   nameAr?: unknown;
   nationalId?: unknown;
@@ -13,6 +18,7 @@ interface Body {
   acceptanceDate?: unknown;
   expectedStartDate?: unknown;
   hrWelcomeNote?: unknown;
+  sendInvitationNow?: unknown;
 }
 
 function validate(body: Body): string | null {
@@ -71,6 +77,8 @@ export async function POST(request: NextRequest) {
       hrWelcomeNote: body.hrWelcomeNote ? String(body.hrWelcomeNote).trim() : undefined,
       organizationId: ctx.organizationId,
       createdByUserId: ctx.userId,
+      // Single-create HR form: default to sending unless the form explicitly opts out.
+      sendInvitationNow: body.sendInvitationNow !== false,
     });
 
     return NextResponse.json(result, { status: 201 });

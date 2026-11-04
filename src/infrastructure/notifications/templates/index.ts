@@ -1,3 +1,5 @@
+import { escapeHtml as e } from "@/infrastructure/contracts/template-renderer";
+
 const APP_NAME = "نزاهة التوظيف";
 const BRAND_COLOR = "#013A2B";
 
@@ -25,7 +27,7 @@ function base(content: string): string {
   <div class="header">
     <div class="header-bar"></div>
     <h1>${APP_NAME}</h1>
-    <p>منصة إدارة التوظيف الحكومي</p>
+    <p>منصة إدارة رحلة الانضمام</p>
   </div>
   <div class="body">${content}</div>
   <div class="footer">هذا البريد آلي — يُرجى عدم الرد عليه مباشرةً</div>
@@ -43,9 +45,9 @@ export function documentApproved(data: {
   return {
     subject: `✅ تمت الموافقة على مستندك — ${data.documentName}`,
     html: base(`
-      <p>عزيزي/عزيزتي <strong>${data.candidateName}</strong>،</p>
+      <p>عزيزي/عزيزتي <strong>${e(data.candidateName)}</strong>،</p>
       <p>يسعدنا إبلاغك بأن فريق الموارد البشرية قد راجع واعتمد المستند التالي:</p>
-      <div class="highlight"><strong>${data.documentName}</strong></div>
+      <div class="highlight"><strong>${e(data.documentName)}</strong></div>
       <p>استمر في رفع المستندات المتبقية لإتمام إجراءات التوظيف.</p>
     `),
   };
@@ -59,11 +61,11 @@ export function documentRejected(data: {
   return {
     subject: `❗ بحاجة إلى مراجعة — ${data.documentName}`,
     html: base(`
-      <p>عزيزي/عزيزتي <strong>${data.candidateName}</strong>،</p>
+      <p>عزيزي/عزيزتي <strong>${e(data.candidateName)}</strong>،</p>
       <p>قام فريق الموارد البشرية بمراجعة المستند وتبيّن أنه يحتاج إلى إعادة الرفع:</p>
-      <div class="highlight"><strong>${data.documentName}</strong></div>
+      <div class="highlight"><strong>${e(data.documentName)}</strong></div>
       <p><strong>سبب الرفض:</strong></p>
-      <div class="reason">${data.reason}</div>
+      <div class="reason">${e(data.reason)}</div>
       <p>يُرجى تصحيح المستند وإعادة رفعه في أقرب وقت ممكن.</p>
     `),
   };
@@ -76,8 +78,8 @@ export function allDocumentsApproved(data: {
   return {
     subject: "🎉 اكتملت مستنداتك — ملفك قيد المراجعة النهائية",
     html: base(`
-      <p>عزيزي/عزيزتي <strong>${data.candidateName}</strong>،</p>
-      <p>تهانينا! لقد اعتمد فريق الموارد البشرية جميع مستنداتك لوظيفة <strong>${data.jobTitle}</strong>.</p>
+      <p>عزيزي/عزيزتي <strong>${e(data.candidateName)}</strong>،</p>
+      <p>تهانينا! لقد اعتمد فريق الموارد البشرية جميع مستنداتك لوظيفة <strong>${e(data.jobTitle)}</strong>.</p>
       <div class="highlight">ملفك الآن في مرحلة <strong>المراجعة النهائية</strong>. سنتواصل معك قريباً.</div>
       <p>شكراً لتعاونك وحسن استجابتك.</p>
     `),
@@ -94,9 +96,9 @@ export function contractSigned(data: {
     html: base(`
       <p>وقّع المرشح على عقد العمل وهو جاهز للخطوة التالية.</p>
       <div class="highlight">
-        <p><strong>المرشح:</strong> ${data.candidateName}</p>
-        <p><strong>المسمى الوظيفي:</strong> ${data.jobTitle}</p>
-        <p><strong>وقت التوقيع:</strong> ${new Date(data.signedAt).toLocaleString("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short" })}</p>
+        <p><strong>المرشح:</strong> ${e(data.candidateName)}</p>
+        <p><strong>المسمى الوظيفي:</strong> ${e(data.jobTitle)}</p>
+        <p><strong>وقت التوقيع:</strong> ${e(new Date(data.signedAt).toLocaleString("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short" }))}</p>
       </div>
       <p>يمكنك الآن بدء إجراءات الاستعداد للمباشرة والتواصل مع المرشح عبر منصة نزاهة.</p>
     `),
@@ -112,12 +114,64 @@ export function documentUploaded(data: {
     html: base(`
       <p>تم رفع مستند جديد يحتاج إلى مراجعتك:</p>
       <div class="highlight">
-        <p><strong>المرشح:</strong> ${data.candidateName}</p>
-        <p><strong>المستند:</strong> ${data.documentName}</p>
+        <p><strong>المرشح:</strong> ${e(data.candidateName)}</p>
+        <p><strong>المستند:</strong> ${e(data.documentName)}</p>
       </div>
       <p>يُرجى تسجيل الدخول إلى المنصة لمراجعة المستند والبت فيه.</p>
     `),
   };
 }
 
+const LIFECYCLE_COPY: Record<string, { subject: string; lead: string; tone: "highlight" | "reason" }> = {
+  APPROVED:    { subject: "✅ اعتُمد ملفك", lead: "اعتمد فريق الموارد البشرية ملفك. الخطوة التالية: مراجعة عقد العمل وتوقيعه حين يصبح جاهزاً.", tone: "highlight" },
+  COMPLETED:   { subject: "🎉 اكتملت رحلة انضمامك", lead: "اكتملت إجراءات انضمامك. نرحب بك ونتمنى لك بداية موفقة.", tone: "highlight" },
+  REJECTED:    { subject: "إشعار بشأن طلبك", lead: "نأسف لإبلاغك بأنه تقرر عدم استكمال طلبك.", tone: "reason" },
+  WITHDRAWN:   { subject: "تم تسجيل انسحابك", lead: "سُجّل انسحابك من الوظيفة وأُغلق طلبك.", tone: "reason" },
+  IN_PROGRESS: { subject: "أُعيد فتح طلبك", lead: "أُعيد فتح طلبك، ويمكنك الدخول إلى المنصة لاستكمال إجراءاتك.", tone: "highlight" },
+  PENDING:     { subject: "أُعيد فتح طلبك", lead: "أُعيد فتح طلبك، ويمكنك الدخول إلى المنصة لقبول العرض واستكمال إجراءاتك.", tone: "highlight" },
+};
+
+/** إشعار المرشح بقرار يدوي على طلبه. يعيد null للحالات التي لا تستحق بريداً. */
+export function applicationStatusChanged(data: {
+  candidateName: string;
+  jobTitle: string;
+  organizationName: string;
+  status: string;
+  reason?: string | null;
+}): { subject: string; html: string } | null {
+  const copy = LIFECYCLE_COPY[data.status];
+  if (!copy) return null;
+  return {
+    subject: `${copy.subject} — ${data.jobTitle}`,
+    html: base(`
+      <p>عزيزي/عزيزتي <strong>${e(data.candidateName)}</strong>،</p>
+      <p>بخصوص وظيفة <strong>${e(data.jobTitle)}</strong> في <strong>${e(data.organizationName)}</strong>:</p>
+      <div class="${copy.tone}">${e(copy.lead)}</div>
+      ${data.reason ? `<p><strong>الملاحظة:</strong></p><div class="reason">${e(data.reason)}</div>` : ""}
+    `),
+  };
+}
+
+export function hrAlert(data: {
+  candidateName: string;
+  titleAr: string;
+  bodyAr: string;
+  priority: "HIGH" | "NORMAL";
+}): { subject: string; html: string } {
+  const urgent = data.priority === "HIGH";
+  return {
+    subject: `${urgent ? "⚠️ تنبيه عاجل" : "📣 رسالة"} — ${data.titleAr}`,
+    html: base(`
+      <p>عزيزي/عزيزتي <strong>${e(data.candidateName)}</strong>،</p>
+      <p>لديك ${urgent ? "<strong>تنبيه عاجل</strong>" : "رسالة"} من فريق الموارد البشرية:</p>
+      <div class="${urgent ? "reason" : "highlight"}">
+        <p style="margin:0 0 6px"><strong>${e(data.titleAr)}</strong></p>
+        <p style="margin:0; white-space:pre-wrap">${e(data.bodyAr)}</p>
+      </div>
+      <p>يُرجى الدخول إلى منصة نزاهة للاطّلاع على التفاصيل والإقرار بالاستلام.</p>
+    `),
+  };
+}
+
 export { candidateInvitation } from "./invitation";
+export { candidateCredentials } from "./credentials";

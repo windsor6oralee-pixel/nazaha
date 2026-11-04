@@ -12,6 +12,25 @@ interface CandidateRowProps {
   candidate: Candidate;
 }
 
+const EMAIL_TONE: Record<string, { label: string; bg: string; color: string }> = {
+  not_sent: { label: "لم تُرسَل",  bg: "#F5F5F5", color: "#6E7673" },
+  sent:     { label: "أُرسلت",      bg: "#E6F0E9", color: "#013A2B" },
+  opened:   { label: "فُتحت",       bg: "#E6F0E9", color: "#227A4E" },
+  clicked:  { label: "ضُغطت",       bg: "#013A2B", color: "#E8D27A" },
+  bounced:  { label: "ارتدَّت",     bg: "#FAECEB", color: "#A83A30" },
+  failed:   { label: "فشلت",       bg: "#FAECEB", color: "#A83A30" },
+};
+
+function EmailStatusBadge({ status }: { status?: string }) {
+  const tone = EMAIL_TONE[status ?? "not_sent"] ?? EMAIL_TONE.not_sent;
+  return (
+    <span className="text-[11px] px-2 py-0.5 rounded-md inline-block font-semibold"
+      style={{ background: tone.bg, color: tone.color }}>
+      {tone.label}
+    </span>
+  );
+}
+
 /** صف مرشح داخل جدول المرشحين (CandidatesTable). */
 export function CandidateRow({ candidate }: CandidateRowProps) {
   return (
@@ -56,6 +75,11 @@ export function CandidateRow({ candidate }: CandidateRowProps) {
         </StatusDot>
       </Td>
 
+      {/* Email engagement */}
+      <Td hideBelow="md" style={{ whiteSpace: "nowrap" }}>
+        <EmailStatusBadge status={candidate.emailStatus} />
+      </Td>
+
       {/* Date */}
       <Td numeric hideBelow="lg" style={{ whiteSpace: "nowrap", color: "var(--ink-muted)", fontSize: 13 }}>
         {formatDate(candidate.acceptanceDate)}
@@ -94,6 +118,7 @@ export function CandidatesTable({
         "المرشح",
         { label: "نسبة الإنجاز", hideBelow: "sm" },
         "الحالة",
+        { label: "البريد", hideBelow: "md" },
         { label: "تاريخ القبول", hideBelow: "lg" },
         { label: <span className="sr-only">إجراءات</span>, width: "1%" },
       ]}

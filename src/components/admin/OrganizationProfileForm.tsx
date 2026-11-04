@@ -233,8 +233,8 @@ export function OrganizationProfileForm({ profile }: Props) {
             <Field label="بريد التواصل للمرشحين" icon={Mail} hint="يظهر للمرشح عند الحاجة للمساعدة">
               <input type="email" value={form.contactEmail} onChange={set("contactEmail")} dir="ltr" className={inputCls} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             </Field>
-            <Field label="هاتف التواصل" icon={Phone}>
-              <input type="tel" value={form.contactPhone} onChange={set("contactPhone")} dir="ltr" className={inputCls} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+            <Field label="هاتف واتساب التواصل" icon={Phone} hint="رقم دولي يبدأ بـ + (مثل +9665XXXXXXXX) — يُستخدم في زر واتساب داخل بوابة المرشح">
+              <input type="tel" value={form.contactPhone} onChange={set("contactPhone")} dir="ltr" placeholder="+9665XXXXXXXX" className={inputCls} style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
             </Field>
             <Field label="لون الترويسة (اختياري)" icon={Palette} hint="يُلوّن ترويسة لوحة الموارد البشرية فقط — لا يغيّر هوية نزاهة">
               <div className="flex items-center gap-2">

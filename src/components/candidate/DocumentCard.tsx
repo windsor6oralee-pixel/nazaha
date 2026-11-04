@@ -16,7 +16,8 @@ interface DocumentCardProps {
 }
 
 export function DocumentCard({ document: doc, allowUpload = true, candidateFirstName }: DocumentCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const router = useRouter();
@@ -24,6 +25,22 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
   const canUpload =
     allowUpload &&
     (doc.status === "not_uploaded" || doc.status === "rejected");
+
+  // Pre-upload yes/no question. Only applies when the rule declares it, the
+  // candidate hasn't uploaded anything yet, and there's a configured external
+  // route to send the "no" answer to.
+  const [hasOwnCopy, setHasOwnCopy] = useState<boolean | null>(null);
+  const askFirst =
+    allowUpload &&
+    doc.askBeforeUpload === true &&
+    doc.status === "not_uploaded" &&
+    !!doc.externalActionUrl;
+  const showQuestion   = askFirst && hasOwnCopy === null;
+  const showExternal   = !!doc.externalActionUrl && allowUpload && (
+    doc.status === "rejected" ||          // HR rejected → steer them to issuance
+    (askFirst && hasOwnCopy === false)    // candidate said "no, I don't have one"
+  );
+  const effectiveCanUpload = canUpload && !askFirst || (askFirst && hasOwnCopy === true && canUpload);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -105,30 +122,123 @@ export function DocumentCard({ document: doc, allowUpload = true, candidateFirst
               رُفع بتاريخ <span className="font-numeric">{new Date(doc.uploadedAt).toLocaleDateString("ar-SA-u-nu-latn")}</span>
             </p>
           )}
+
+          {/* Yes/no question — only when the rule asks for it. */}
+          {showQuestion && (
+            <div
+              className="rounded-xl p-3"
+              style={{
+                marginTop: "var(--space-12)",
+                background: "var(--color-primary-muted)",
+                border: "1px solid rgba(25,92,48,0.25)",
+              }}
+            >
+              <p className="text-sm" style={{ color: "var(--color-dark)", margin: 0 }}>
+                هل لديك {doc.nameAr} جاهزة ومستوفية لشروط التوظيف؟
+              </p>
+              <div className="flex items-center gap-2" style={{ marginTop: "var(--space-8)" }}>
+                <button
+                  type="button"
+                  onClick={() => setHasOwnCopy(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "#013A2B", color: "white", cursor: "pointer" }}
+                >
+                  نعم — سأرفعها
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHasOwnCopy(false)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold border"
+                  style={{
+                    borderColor: "rgba(201,169,74,0.5)",
+                    background: "#FBF6E4",
+                    color: "#7A5500",
+                    cursor: "pointer",
+                  }}
+                >
+                  لا — أحتاج استخراجها
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* HR-configured external action — shown on rejection or on "no" answer. */}
+          {showExternal && (
+            <div
+              className="rounded-xl p-3"
+              style={{
+                marginTop: "var(--space-12)",
+                background: "#FBF6E4",
+                border: "1px solid rgba(201,169,74,0.4)",
+              }}
+            >
+              <p className="text-xs" style={{ color: "#7A5500", margin: 0 }}>
+                لم تستخرج هذه الوثيقة بعد؟ تصدر لغايات التوظيف من الجهة التالية
+                {doc.externalFeeLabel && <> — <strong>{doc.externalFeeLabel}</strong></>}.
+              </p>
+              <a
+                href={doc.externalActionUrl ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: "#013A2B", color: "white", textDecoration: "none" }}
+              >
+                <Icon name="integrity" size={16} label={false} />
+                {doc.externalActionLabel ?? "اذهب لإصدار المستند"}
+              </a>
+              {doc.candidateEmail && (
+                <p className="text-[11px] mt-2" style={{ color: "#7A5500" }}>
+                  سيُفتح الموقع ويُرفَق بريدك: <span dir="ltr">{doc.candidateEmail}</span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Upload button — full-width on mobile, compact on desktop */}
-        {canUpload && (
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileChange}
-            aria-label={`رفع ${doc.nameAr}`}
-          />
+        {effectiveCanUpload && (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={handleFileChange}
+              aria-label={`رفع ${doc.nameAr}`}
+            />
+            {/* Dedicated capture input so mobile browsers open the rear camera. */}
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileChange}
+              aria-label={`التقط ${doc.nameAr} بالكاميرا`}
+            />
+          </>
         )}
-        {canUpload && (
-          <Button
-            variant="secondary"
-            icon="upload"
-            loading={isPending}
-            onClick={() => inputRef.current?.click()}
-            className="w-full sm:w-auto"
-            style={{ flex: "none" }}
-          >
-            {isPending ? "جارٍ الرفع..." : doc.status === "rejected" ? "إعادة رفع المستند" : "رفع المستند"}
-          </Button>
+        {effectiveCanUpload && (
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2" style={{ flex: "none" }}>
+            <Button
+              variant="secondary"
+              icon="upload"
+              loading={isPending}
+              onClick={() => inputRef.current?.click()}
+              className="w-full sm:w-auto"
+            >
+              {isPending ? "جارٍ الرفع..." : doc.status === "rejected" ? "إعادة الرفع" : "اختر ملف"}
+            </Button>
+            <Button
+              variant="secondary"
+              icon="documents"
+              onClick={() => cameraRef.current?.click()}
+              className="w-full sm:w-auto"
+              disabled={isPending}
+            >
+              التقط بالكاميرا
+            </Button>
+          </div>
         )}
       </div>
     </div>

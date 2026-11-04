@@ -19,6 +19,12 @@ export interface CreateCandidateInput {
   organizationId: string;
   createdByUserId: string;
   customValues?: { definitionId: string; value: string }[];
+  /**
+   * When true, provisions login credentials and emails them right after the
+   * candidate is created. When false (default), the row is created silently —
+   * HR then controls who to invite and when from the candidates list.
+   */
+  sendInvitationNow?: boolean;
 }
 
 export interface CreateCandidateResult {
@@ -26,6 +32,8 @@ export interface CreateCandidateResult {
   applicationId: string;
   rawToken: string;
   email: string;
+  invitationDelivered: boolean;
+  invitationError: string | null;
 }
 
 export async function createCandidate(
@@ -139,8 +147,24 @@ export async function createCandidate(
     return { candidateId: candidate.id, applicationId: application.id };
   });
 
-  // 4. Send invitation (outside transaction — network call)
-  const { rawToken, email } = await sendInvitation(candidateId);
+  // 4. Send invitation — ONLY when the caller explicitly opts in. Import flows
+  // default to false so a 500-row upload does not detonate the mail pool; HR
+  // then picks when and to whom from the candidates list.
+  let rawToken = "";
+  let email = "";
+  let invitationDelivered = false;
+  let invitationError: string | null = null;
+  if (input.sendInvitationNow) {
+    try {
+      const result = await sendInvitation(candidateId);
+      rawToken = result.rawToken;
+      email    = result.email;
+      invitationDelivered = result.delivered;
+    } catch (err) {
+      invitationError = err instanceof Error ? err.message : "فشل إرسال الدعوة";
+      console.error(`[createCandidate] invitation failed for ${candidateId}:`, invitationError);
+    }
+  }
 
-  return { candidateId, applicationId, rawToken, email };
+  return { candidateId, applicationId, rawToken, email, invitationDelivered, invitationError };
 }

@@ -30,8 +30,18 @@ export async function getInboxKitConfig(
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   if (!map.inboxkit_api_key_enc || !map.inboxkit_workspace_id) return null;
 
+  // The API key may have been encrypted with a prior ENCRYPTION_KEY. Rather than
+  // 500 the whole settings page, treat an unreadable key as "not configured" so
+  // the admin can reconnect fresh from the UI.
+  let apiKey: string;
+  try {
+    apiKey = decrypt(map.inboxkit_api_key_enc);
+  } catch {
+    return null;
+  }
+
   return {
-    apiKey:       decrypt(map.inboxkit_api_key_enc),
+    apiKey,
     workspaceId:  map.inboxkit_workspace_id,
     mailboxUid:   map.inboxkit_mailbox_uid ?? "",
     mailboxEmail: map.inboxkit_mailbox_email ?? "",

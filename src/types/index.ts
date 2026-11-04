@@ -23,7 +23,18 @@ export interface Document {
   rejectionReason?: string;
   fileUrl?: string;
   filePath?: string;
+  // Optional CTA — HR-configured external action (e.g. health-cert issuance portal)
+  externalActionUrl?: string | null;
+  externalActionLabel?: string | null;
+  externalFeeLabel?: string | null;
+  // Candidate's own e-mail — appended to externalActionUrl as ?email=
+  candidateEmail?: string | null;
+  // When true the card leads with "do you already have this?" and only shows
+  // upload after a "yes".
+  askBeforeUpload?: boolean;
 }
+
+export type CandidateEmailStatus = "not_sent" | "sent" | "opened" | "clicked" | "bounced" | "failed";
 
 export interface Candidate {
   id: string;
@@ -40,6 +51,8 @@ export interface Candidate {
   completionPercentage: number;
   documents: Document[];
   steps: OnboardingStep[];
+  emailStatus?: CandidateEmailStatus;
+  lastEmailAt?: string;
 }
 
 export interface OnboardingStep {

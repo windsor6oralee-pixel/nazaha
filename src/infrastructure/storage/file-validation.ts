@@ -4,9 +4,12 @@
  */
 
 const MAGIC_BYTES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
-  { mime: "application/pdf", bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
-  { mime: "image/jpeg", bytes: [0xff, 0xd8, 0xff] },
-  { mime: "image/png", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  { mime: "application/pdf", bytes: [0x25, 0x50, 0x44, 0x46] },                            // %PDF
+  { mime: "image/jpeg",      bytes: [0xff, 0xd8, 0xff] },
+  { mime: "image/png",       bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  { mime: "image/webp",      bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 },                 // "RIFF"
+  { mime: "image/heic",      bytes: [0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], offset: 4 },
+  { mime: "image/heic",      bytes: [0x66, 0x74, 0x79, 0x70, 0x6d, 0x69, 0x66, 0x31], offset: 4 }, // HEIF container
 ];
 
 export function detectMimeType(buffer: Buffer): string | null {
@@ -22,6 +25,8 @@ export const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
   "image/png",
+  "image/webp",
+  "image/heic",
 ]);
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -40,10 +45,10 @@ export function validateUploadedFile(buffer: Buffer, declaredName: string): Vali
 
   const detectedMime = detectMimeType(buffer);
   if (!detectedMime) {
-    return { ok: false, error: "نوع الملف غير مدعوم. المقبول: PDF، JPEG، PNG" };
+    return { ok: false, error: "نوع الملف غير مدعوم. المقبول: PDF، JPEG، PNG، WebP، HEIC" };
   }
   if (!ALLOWED_MIME_TYPES.has(detectedMime)) {
-    return { ok: false, error: "نوع الملف غير مدعوم. المقبول: PDF، JPEG، PNG" };
+    return { ok: false, error: "نوع الملف غير مدعوم. المقبول: PDF، JPEG، PNG، WebP، HEIC" };
   }
 
   return { ok: true, mimeType: detectedMime };
@@ -51,8 +56,10 @@ export function validateUploadedFile(buffer: Buffer, declaredName: string): Vali
 
 const MIME_TO_EXT: Record<string, string> = {
   "application/pdf": "pdf",
-  "image/jpeg": "jpg",
-  "image/png": "png",
+  "image/jpeg":      "jpg",
+  "image/png":       "png",
+  "image/webp":      "webp",
+  "image/heic":      "heic",
 };
 
 export function mimeToExtension(mime: string): string {

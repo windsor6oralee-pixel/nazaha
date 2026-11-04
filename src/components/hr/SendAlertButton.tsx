@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Card";
 import { Input, Textarea } from "@/components/ui/Field";
@@ -11,20 +11,53 @@ interface Props {
   candidateId: string;
 }
 
+interface TemplateRow {
+  id: string;
+  kind: "INVITATION" | "ALERT" | "HEALTH_CERT" | "GENERIC";
+  nameAr: string;
+  subjectAr: string;
+  bodyAr: string;
+  isDefault: boolean;
+}
+
+const KIND_FILTER_FOR_ALERT: TemplateRow["kind"][] = ["ALERT", "HEALTH_CERT", "GENERIC"];
+
 export function SendAlertButton({ candidateId }: Props) {
   const formId = useId();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [priority, setPriority] = useState<"NORMAL" | "HIGH">("NORMAL");
+  const [templateId, setTemplateId] = useState<string>("");
+  const [templates, setTemplates]   = useState<TemplateRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // Lazy-load the template library the first time the modal opens — keeps the
+  // HR page quiet when nobody is actually about to send.
+  useEffect(() => {
+    if (!open || templates.length) return;
+    fetch("/api/admin/email-templates")
+      .then((r) => r.ok ? r.json() : { templates: [] })
+      .then((j) => setTemplates((j.templates ?? []).filter((t: TemplateRow) => KIND_FILTER_FOR_ALERT.includes(t.kind))))
+      .catch(() => setTemplates([]));
+  }, [open, templates.length]);
+
+  function applyTemplate(id: string) {
+    setTemplateId(id);
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    // Pre-fill from the template; HR can still edit before sending.
+    setTitle(t.subjectAr.replace(/\{\{[^}]+\}\}/g, "").trim() || title);
+    setBody(t.bodyAr);
+  }
 
   function reset() {
     setTitle("");
     setBody("");
     setPriority("NORMAL");
+    setTemplateId("");
     setError(null);
     setSuccess(false);
   }
@@ -47,7 +80,7 @@ export function SendAlertButton({ candidateId }: Props) {
       const res = await fetch(`/api/hr/candidates/${candidateId}/alerts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titleAr: title.trim(), bodyAr: body.trim(), priority }),
+        body: JSON.stringify({ titleAr: title.trim(), bodyAr: body.trim(), priority, templateId: templateId || undefined }),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -90,6 +123,26 @@ export function SendAlertButton({ candidateId }: Props) {
           <Alert tone="success" title="تم الإرسال بنجاح" />
         ) : (
           <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-4" style={{ color: "var(--ink)" }}>
+            {templates.length > 0 && (
+              <div className="nz-field">
+                <label className="nz-field__label" htmlFor={`${formId}-tpl`}>قالب جاهز (اختياري)</label>
+                <select
+                  id={`${formId}-tpl`}
+                  value={templateId}
+                  onChange={(e) => applyTemplate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border text-sm"
+                  style={{ borderColor: "var(--border-100)", background: "var(--surface-000)" }}
+                >
+                  <option value="">— بدون قالب (اكتب يدوياً) —</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.nameAr}{t.isDefault ? " (افتراضي)" : ""}</option>
+                  ))}
+                </select>
+                <p className="nz-field__hint" style={{ margin: 0 }}>
+                  اختيار قالب يُعبّئ العنوان والنص تلقائياً — يمكنك تعديلهما بعد ذلك.
+                </p>
+              </div>
+            )}
             {/* Priority toggle */}
             <div className="nz-field">
               <span className="nz-field__label" id={`${formId}-priority`}>نوع الرسالة</span>

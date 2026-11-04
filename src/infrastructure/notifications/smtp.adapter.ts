@@ -10,6 +10,7 @@ interface SmtpConfig {
 }
 
 export class SmtpAdapter implements NotificationProvider {
+  readonly isTransport = true;
   private config: SmtpConfig;
   // nodemailer is imported lazily so it doesn't load in dev (ConsoleAdapter path)
   private transporter: import("nodemailer").Transporter | null = null;

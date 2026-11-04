@@ -239,7 +239,11 @@ export function CandidateImportForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl border text-center" style={{ borderColor: "rgba(34,122,78,0.3)", background: "var(--color-success-bg)" }}>
               <p className="text-3xl font-bold" style={{ color: "var(--color-success)" }}>{response.succeeded}</p>
-              <p className="text-xs mt-1" style={{ color: "var(--color-success)" }}>تم استيرادهم وإرسال الدعوات</p>
+              <p className="text-xs mt-1" style={{ color: "var(--color-success)" }}>تم استيرادهم بدون إرسال دعوات</p>
+              <a href="/hr/directives/bulk?mode=invitation" className="inline-block mt-2 text-xs font-semibold underline"
+                 style={{ color: "var(--color-primary)" }}>
+                اذهب لإرسال الدعوات ←
+              </a>
             </div>
             <div className="p-4 rounded-xl border text-center" style={{ borderColor: "rgba(168,58,48,0.3)", background: "var(--color-error-bg)" }}>
               <p className="text-3xl font-bold" style={{ color: "var(--color-error)" }}>{response.failed}</p>

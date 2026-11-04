@@ -56,11 +56,11 @@ type DBDocWithReviews = DBDocument & {
   reviews: (DocumentReview & { reviewer: { nameAr: string } | null })[];
 };
 
-export function mapDocument(doc: DBDocWithReviews): Document {
+export function mapDocument(doc: DBDocWithReviews): Document & { _type: string } {
   const rejected = doc.reviews.find((r) => r.decision === "REJECTED");
   return {
     id: doc.id,
-    name: doc.nameAr, // UI uses nameAr in name field
+    name: doc.nameAr,
     nameAr: doc.nameAr,
     required: doc.isRequired,
     status: (docStatusMap[doc.status] ?? "not_uploaded") as DocumentStatus,
@@ -68,6 +68,7 @@ export function mapDocument(doc: DBDocWithReviews): Document {
     rejectionReason: rejected?.reason ?? undefined,
     fileUrl: doc.filePath ? `/api/files/${doc.filePath}` : undefined,
     filePath: doc.filePath ?? undefined,
+    _type: doc.type,  // internal — pruned after external-action enrichment
   };
 }
 

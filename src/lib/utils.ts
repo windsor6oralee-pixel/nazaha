@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getStatusLabel(status: ApplicationStatus): string {
   const labels: Record<ApplicationStatus, string> = {
-    pending: "قيد الانتظار",
+    pending: "بانتظار قبول العرض",
     in_progress: "قيد الإنجاز",
     under_review: "تحت المراجعة",
     approved: "مقبول",

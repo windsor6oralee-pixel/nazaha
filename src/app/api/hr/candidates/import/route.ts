@@ -9,6 +9,11 @@ import { requireHR } from "@/infrastructure/tenant";
 import { createCandidate } from "@/infrastructure/services/candidate.service";
 import { randomBytes } from "crypto";
 
+// Bulk imports create + optionally email dozens of candidates per chunk.
+// Give the serverless function enough headroom.
+export const maxDuration = 300;
+export const runtime = "nodejs";
+
 interface ImportRow {
   name: string;
   email: string;

@@ -41,6 +41,7 @@ export function AlertGate() {
   const [isAcking, setIsAcking] = useState(false);
   const current = queue[0] ?? null;
   const tonesPlayed = useRef<Set<string>>(new Set());
+  const notified = useRef<Set<string>>(new Set());
 
   const poll = useCallback(async () => {
     try {
@@ -62,6 +63,51 @@ export function AlertGate() {
       clearInterval(id);
     };
   }, [poll]);
+
+  // Ask for Notification permission on the first user interaction — browsers
+  // reject requestPermission() outside a user gesture. The banner is a hint,
+  // not the only entry point; a candidate who ignores it still gets the prompt
+  // the moment they click anywhere on the portal.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+    let asked = false;
+    const ask = () => {
+      if (asked || Notification.permission !== "default") return;
+      asked = true;
+      Notification.requestPermission().catch(() => {});
+      cleanup();
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", ask);
+      window.removeEventListener("keydown", ask);
+    };
+    window.addEventListener("pointerdown", ask, { once: true });
+    window.addEventListener("keydown", ask, { once: true });
+    return cleanup;
+  }, []);
+
+  // Fire an OS notification for each new pending alert — once per alert id.
+  // Keeps the candidate aware even when the tab is in the background.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    for (const a of queue) {
+      if (notified.current.has(a.id)) continue;
+      notified.current.add(a.id);
+      try {
+        const n = new Notification(a.titleAr, {
+          body: a.bodyAr,
+          tag: a.id,
+          requireInteraction: a.priority === "HIGH",
+          icon: "/nazaha-logo.png",
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch {
+        // Some browsers throw if called without a gesture; polling retries don't help.
+      }
+    }
+  }, [queue]);
 
   // Play the tone once per HIGH alert when it reaches the top of the queue
   useEffect(() => {

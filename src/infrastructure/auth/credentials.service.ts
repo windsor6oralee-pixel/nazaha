@@ -68,14 +68,15 @@ export async function verifyHRCredentials(email: string, password: string): Prom
 /**
  * حالات الطلب التي يُسمح فيها بدخول المرشح إلى بوابته.
  *
- * الحالات النهائية (مرفوض/منسحب/مكتمل) تُغلق الباب: لا معنى لحساب دخول لمن
- * انتهت علاقته بالجهة. الباقي — قيد المراجعة أو مقبول — دخوله مشروع.
+ * المرفوض والمنسحب يُغلق عليهما الباب. المكتمل يبقى له الدخول ليطّلع على
+ * عقده الموقّع وخلاصة رحلته؛ أما التعديل فيمنعه محرك دورة الطلب لا الدخول.
  */
 const CANDIDATE_LOGIN_STATUSES: ApplicationStatus[] = [
   "PENDING",
   "IN_PROGRESS",
   "UNDER_REVIEW",
   "APPROVED",
+  "COMPLETED",
 ];
 
 /** أحدث طلب نشط للمرشح — هو الذي يحدّد حالة «مقبول» في النظام. */
@@ -372,6 +373,8 @@ export async function isPrincipalActive(principal: {
       passwordChangedAt: true,
       accountActivatedAt: true,
       organization: { select: { isActive: true } },
+      // رفض الطلب أو تسجيل الانسحاب يُنهي الجلسة المفتوحة فوراً، لا عند انتهاء الرمز.
+      applications: { where: { status: { in: CANDIDATE_LOGIN_STATUSES } }, select: { id: true }, take: 1 },
     },
   });
   // المرشح يدخل بحساب مفعّل (له كلمة مرور)، وتغيير كلمته يُبطل جلساته
@@ -381,6 +384,7 @@ export async function isPrincipalActive(principal: {
     c.organization.isActive &&
     c.organizationId === principal.organizationId &&
     !!c.accountActivatedAt &&
+    c.applications.length > 0 &&
     !isSessionStale(principal.sessionIssuedAt, c.passwordChangedAt)
   );
 }

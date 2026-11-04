@@ -1,6 +1,7 @@
 import type { NotificationProvider, EmailMessage } from "./notification.interface";
 
 export class ConsoleAdapter implements NotificationProvider {
+  readonly isTransport = false;
   async send(message: EmailMessage): Promise<void> {
     console.log("\n📧 [DEV EMAIL] ─────────────────────────────");
     console.log(`To:      ${message.to}`);

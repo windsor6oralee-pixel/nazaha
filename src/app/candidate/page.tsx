@@ -11,6 +11,9 @@ import { WelcomeMessage } from "@/components/candidate/WelcomeMessage";
 import { PreboardingHub } from "@/components/candidate/PreboardingHub";
 import { CountdownCard } from "@/components/candidate/CountdownCard";
 import { OnboardingComplete } from "@/components/candidate/OnboardingComplete";
+import { AcceptOfferCard } from "@/components/candidate/AcceptOfferCard";
+import { HRDirectiveCard } from "@/components/candidate/HRDirectiveCard";
+import { HRStaffContacts } from "@/components/candidate/HRStaffContacts";
 import { getTenantContext } from "@/infrastructure/tenant";
 import {
   getCandidateByApplicationId,
@@ -93,6 +96,17 @@ export default async function CandidateDashboard() {
         </div>
       </div>
 
+      <HRDirectiveCard />
+
+      {candidate.status === "pending" && (
+        <AcceptOfferCard
+          firstName={firstName}
+          jobTitle={candidate.jobTitle}
+          department={candidate.department}
+          organization={org.nameAr}
+        />
+      )}
+
       {/* Indicator cards */}
       <div className="nz-stats nz-stagger">
         <StatCard
@@ -174,7 +188,7 @@ export default async function CandidateDashboard() {
             steps={candidate.steps}
             completionPercentage={candidate.completionPercentage}
           />
-          <NextAction candidate={candidate} firstName={firstName} />
+          <NextAction candidate={candidate} firstName={firstName} contractStatus={contract?.status ?? null} />
 
           {candidate.startDate && (
             <CountdownCard
@@ -240,6 +254,9 @@ export default async function CandidateDashboard() {
             orgName={org.nameAr}
             candidateName={candidate.name}
           />
+
+          {/* قائمة موظفي HR الذين وضعوا أرقام واتساب — يختار المرشح من يُحادث */}
+          <HRStaffContacts />
         </div>
       </div>
     </div>

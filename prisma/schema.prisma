@@ -93,6 +93,10 @@ model Organization {
   contractTemplates ContractTemplate[]
   contracts         Contract[]
   candidateFields   CandidateFieldDefinition[]
+  mailboxUsage      MailboxDailyUsage[]
+  directiveTemplates HRDirectiveTemplate[]
+  emailTemplates     EmailTemplate[]
+  emailLogs          EmailLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,6 +192,7 @@ model User {
   notifications    Notification[]
   auditLogs        AuditLog[]
   sentAlerts       CandidateAlert[]
+  createdDirectives HRDirective[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,13 +355,21 @@ model Application {
   contracts          Contract[]
   auditLogs          AuditLog[]
   preboardingChannel PreboardingChannel?
+  directive          HRDirective?
   candidateAlerts    CandidateAlert[]
 
   hrWelcomeNote String?   // optional personalised message written by HR, shown as a banner to the candidate
 
+  // ── دورة حياة الطلب (applications/lifecycle.ts) ──
+  // statusReason: سبب آخر قرار يدوي (رفض/انسحاب/إعادة فتح) ويُعرض للطرفين.
+  offerAcceptedAt DateTime?
+  statusReason    String?
+  statusChangedAt DateTime?
+
   submittedAt DateTime?
   approvedAt  DateTime?
   rejectedAt  DateTime?
+  withdrawnAt DateTime?
   completedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -367,6 +380,7 @@ model Application {
   @@index([candidateId])
   @@index([organizationId])
   @@index([status])
+  @@index([organizationId, status])
   @@map("applications")
 }
 
@@ -490,6 +504,21 @@ model WorkflowStepDocument {
   maxFileCount   Int          @default(1)
   requiresReview Boolean      @default(true)
   notes          String?      // instructions shown to candidate
+
+  // Optional "call to action" the candidate sees on the document card — e.g. a
+  // link to the health-cert issuance portal with their e-mail appended, plus
+  // the fee they need to pay. All three fields are nullable: a rule without
+  // them simply renders the normal upload card.
+  externalActionUrl   String?
+  externalActionLabel String?
+  externalFeeLabel    String?    // free-text display, e.g. "250 ريال"
+  externalFeeAmount   Int?       // numeric value forwarded in the URL as &amount=
+  externalFeeCurrency String?    // ISO 4217 like "SAR"; defaults to "SAR" when amount is set
+
+  // When true, the candidate card leads with a yes/no question ("do you already
+  // have this document?") before showing the upload UI. "No" routes them to
+  // externalActionUrl; "yes" opens the normal uploader.
+  askBeforeUpload     Boolean  @default(false)
 
   workflowStepId String
   workflowStep   WorkflowStep @relation(fields: [workflowStepId], references: [id])
@@ -912,4 +941,181 @@ enum PreboardingMsgType {
   PING
   PING_RESPONSE
   FILE_REQUEST
+}
+
+// ============================================================
+// MAILBOX DAILY USAGE
+// Per-mailbox send counter, bucketed by date (UTC). Drives
+// the daily-cap enforcement in MailboxPoolAdapter.
+// ============================================================
+
+model MailboxDailyUsage {
+  id             String   @id @default(cuid())
+  organizationId String
+  mailboxEmail   String
+  date           DateTime @db.Date
+  sentCount      Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, mailboxEmail, date])
+  @@index([organizationId, date])
+  @@map("mailbox_daily_usage")
+}
+
+// ============================================================
+// HR DIRECTIVE — "sticky instruction" shown to the candidate
+// One active directive per application. HR edits it as the
+// current action-needed message; it stays until replaced.
+// Optionally allows a single candidate reply.
+// ============================================================
+
+enum DirectiveType {
+  INFO
+  URGENT
+  APPOINTMENT
+}
+
+model HRDirective {
+  id                 String        @id @default(cuid())
+  applicationId      String        @unique
+  type               DirectiveType @default(INFO)
+  title              String
+  body               String
+  allowReply         Boolean       @default(false)
+  notifyByEmail      Boolean       @default(false)
+  candidateReply     String?
+  candidateReadAt    DateTime?
+  candidateRepliedAt DateTime?
+  createdByUserId    String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id])
+  createdBy   User        @relation(fields: [createdByUserId], references: [id])
+
+  @@map("hr_directives")
+}
+
+// Per-org quick-pick templates for HR directives.
+/// Unified template library for ad-hoc sends — invitation emails, HR alerts,
+/// generic reminders, health-certificate follow-ups, etc. One row per saved
+/// template. HRDirectiveTemplate stays separate because it is tightly scoped
+/// to the directive card lifecycle; this table is the general-purpose store.
+enum EmailTemplateKind {
+  INVITATION    // login credentials + welcome
+  ALERT         // in-app alert mirror / escalation
+  HEALTH_CERT   // health certificate reminder
+  GENERIC       // catch-all / custom
+}
+
+model EmailTemplate {
+  id             String            @id @default(cuid())
+  organizationId String
+  kind           EmailTemplateKind @default(GENERIC)
+  nameAr         String            // display name in HR picker
+  subjectAr      String
+  bodyAr         String            // supports {{candidate.*}} / {{organization.*}} variables
+  isDefault      Boolean           @default(false)  // one default per (org, kind)
+  isActive       Boolean           @default(true)
+  createdByUserId String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, kind])
+  @@map("email_templates")
+}
+
+model HRDirectiveTemplate {
+  id             String        @id @default(cuid())
+  organizationId String
+  title          String
+  body           String
+  type           DirectiveType @default(INFO)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("hr_directive_templates")
+}
+
+// Snapshot of a replaced directive, kept so HR can see what instructions
+// have been given to a candidate over time (and what the candidate replied
+// to each one).
+model HRDirectiveHistory {
+  id                 String        @id @default(cuid())
+  applicationId      String
+  type               DirectiveType @default(INFO)
+  title              String
+  body               String
+  allowReply         Boolean       @default(false)
+  notifyByEmail      Boolean       @default(false)
+  candidateReply     String?
+  candidateReadAt    DateTime?
+  candidateRepliedAt DateTime?
+  createdByUserId    String
+  createdAt          DateTime
+  archivedAt         DateTime      @default(now())
+
+  @@index([applicationId, archivedAt])
+  @@map("hr_directive_history")
+}
+
+// ============================================================
+// EMAIL LOG — every mail sent by the platform, scoped per org
+// and linked to the recipient (candidate when matched).
+// ============================================================
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+  BOUNCED
+  DELIVERED
+  UNKNOWN
+}
+
+enum EmailDirection {
+  OUTBOUND
+  INBOUND
+}
+
+model EmailLog {
+  id              String         @id @default(cuid())
+  organizationId  String
+  candidateId     String?
+  applicationId   String?
+  sentByUserId    String?
+  fromAddress     String
+  toAddress       String
+  subject         String
+  bodyPreview     String?        // first ~500 chars for list display
+  bodyFull        String?        // full HTML — stored for operator audit
+  providerMessageId String?      // nodemailer / InboxKit id
+  provider        String?        // "smtp" / "inboxkit"
+  status          EmailStatus    @default(QUEUED)
+  errorMessage    String?
+  direction       EmailDirection @default(OUTBOUND)
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  firstOpenedAt   DateTime?
+  lastOpenedAt    DateTime?
+  openCount       Int            @default(0)
+  firstClickedAt  DateTime?
+  lastClickedAt   DateTime?
+  clickCount      Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([candidateId])
+  @@index([providerMessageId])
+  @@map("email_logs")
 }

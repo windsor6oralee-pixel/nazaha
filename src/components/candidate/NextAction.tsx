@@ -6,6 +6,8 @@ import { ButtonLink } from "@/components/ui/Button";
 interface NextActionProps {
   candidate: Candidate;
   firstName: string;
+  /** حالة العقد الحالي إن وُجد. */
+  contractStatus?: string | null;
 }
 
 function DocumentsLink({ children }: { children: string }) {
@@ -19,7 +21,53 @@ function DocumentsLink({ children }: { children: string }) {
   );
 }
 
-export function NextAction({ candidate, firstName }: NextActionProps) {
+export function NextAction({ candidate, firstName, contractStatus }: NextActionProps) {
+  if (candidate.status === "pending") {
+    return (
+      <Alert tone="gold" title={`${firstName}، الخطوة الأولى`}>
+        اقبل العرض الوظيفي لتبدأ رحلة انضمامك وتتمكن من رفع مستنداتك.
+      </Alert>
+    );
+  }
+
+  if (candidate.status === "rejected") {
+    return (
+      <Alert tone="error" title="طلبك مغلق">
+        أُغلق هذا الطلب. للاستفسار تواصل مع الموارد البشرية في جهتك.
+      </Alert>
+    );
+  }
+
+  if (candidate.status === "approved") {
+    if (contractStatus === "PENDING_SIGNATURE") {
+      return (
+        <Alert tone="gold" title={`${firstName}، عقدك جاهز`}>
+          راجع عقد العمل ووقّعه إلكترونياً لإكمال رحلتك.
+        </Alert>
+      );
+    }
+    if (contractStatus === "FULLY_SIGNED") {
+      return (
+        <Alert tone="success" title={`أحسنت يا ${firstName}!`}>
+          وقّعت العقد. استعد لموعد المباشرة، وستُكمل الموارد البشرية انضمامك عند حضورك.
+        </Alert>
+      );
+    }
+    return (
+      <Alert tone="success" title={`${firstName}، اعتُمد ملفك`}>
+        يُعدّ فريق الموارد البشرية عقد عملك الآن، وسيصلك إشعار حين يصبح جاهزاً للتوقيع.
+      </Alert>
+    );
+  }
+
+  if (candidate.status === "under_review") {
+    return (
+      <Alert tone="info" icon="pending" title={`${firstName}، ملفك بانتظار الاعتماد`}>
+        اعتُمدت مستنداتك المطلوبة، وملفك الآن لدى مدير الموارد البشرية للاعتماد النهائي.
+      </Alert>
+    );
+  }
+
   const rejectedDocs = candidate.documents.filter((d) => d.status === "rejected");
   const missingDocs = candidate.documents.filter(
     (d) => d.status === "not_uploaded" && d.required

@@ -99,6 +99,7 @@ export function tenantPrisma(organizationId: string) {
       contractTemplate:         direct(organizationId),
       candidateFieldDefinition: direct(organizationId),
       role:                     direct(organizationId),
+      candidateAlert:           direct(organizationId),
 
       candidateFieldValue:  rel(viaCandidate),
       document:             rel(viaApp),

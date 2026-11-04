@@ -1,8 +1,12 @@
-import { StatCard, Card, Alert } from "@/components/ui/Card";
+import { StatCard, Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { CandidatesTable } from "@/components/hr/CandidateRow";
 import { type IconName } from "@/components/ui/Icon";
 import { auth } from "@/infrastructure/auth/auth";
+import { WorkQueuesPanel } from "@/components/hr/WorkQueuesPanel";
+import { SendingCapacityWidget } from "@/components/hr/SendingCapacityWidget";
+import { DashboardOverview } from "@/components/hr/DashboardOverview";
+import { getWorkQueues } from "@/infrastructure/applications/work-queues.service";
 import type { ApplicationStatus } from "@/types";
 import {
   getCandidatesByOrganization,
@@ -13,12 +17,11 @@ export default async function HRDashboard() {
   const session = await auth();
   const organizationId = session!.user.organizationId;
 
-  const [stats, candidates] = await Promise.all([
+  const [stats, recentCandidates, queues] = await Promise.all([
     getHRStats(organizationId),
-    getCandidatesByOrganization(organizationId),
+    getCandidatesByOrganization(organizationId, { take: 5 }),
+    getWorkQueues(organizationId),
   ]);
-
-  const recentCandidates = candidates.slice(0, 5);
 
   const pct = (value: number) =>
     stats.total > 0 ? `${Math.round((value / stats.total) * 100)}% من الكل` : undefined;
@@ -35,7 +38,7 @@ export default async function HRDashboard() {
     { label: "مقبول", value: stats.approved, icon: "approved", status: "approved", hint: pct(stats.approved) },
     { label: "قيد الإنجاز", value: stats.inProgress, icon: "pending", status: "in_progress" },
     { label: "تحت المراجعة", value: stats.underReview, icon: "review", status: "under_review" },
-    { label: "يحتاج إجراء", value: stats.pendingAction, icon: "flag", status: "pending", hint: "يحتاج متابعة" },
+    { label: "بانتظار قبول العرض", value: stats.pendingAction, icon: "flag", status: "pending" },
     { label: "مكتمل", value: stats.completed, icon: "integrity", status: "completed" },
     { label: "مرفوض", value: stats.rejected, icon: "close", status: "rejected" },
   ];
@@ -46,7 +49,7 @@ export default async function HRDashboard() {
     { label: "مكتمل", value: stats.completed },
     { label: "قيد الإنجاز", value: stats.inProgress },
     { label: "تحت المراجعة", value: stats.underReview },
-    { label: "يحتاج إجراء", value: stats.pendingAction },
+    { label: "بانتظار قبول العرض", value: stats.pendingAction },
     { label: "مرفوض", value: stats.rejected },
   ];
 
@@ -83,6 +86,12 @@ export default async function HRDashboard() {
         ))}
       </div>
 
+      <DashboardOverview />
+
+      <SendingCapacityWidget />
+
+      <WorkQueuesPanel queues={queues} />
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Candidates Table */}
         <Card
@@ -101,24 +110,6 @@ export default async function HRDashboard() {
 
         {/* Side panel */}
         <div className="flex flex-col gap-6">
-          {/* Pending Action Alert */}
-          {stats.pendingAction > 0 && (
-            <Alert tone="gold" icon="flag" title="يحتاج متابعة">
-              <p style={{ margin: 0 }}>
-                <strong className="font-numeric" style={{ color: "var(--ink)" }}>{stats.pendingAction}</strong> مرشحاً لديهم مستندات تحتاج مراجعتك.
-              </p>
-              <ButtonLink
-                href="/hr/candidates?status=pending"
-                variant="secondary"
-                size="sm"
-                icon="review"
-                className="mt-4"
-              >
-                مراجعة المستندات
-              </ButtonLink>
-            </Alert>
-          )}
-
           {/* Distribution */}
           <Card title="توزيع الحالات">
             <div className="flex flex-col gap-4">

@@ -1,4 +1,5 @@
 import { DocumentCard } from "@/components/candidate/DocumentCard";
+import { Alert } from "@/components/ui/Card";
 import { auth } from "@/infrastructure/auth/auth";
 import { getCandidateByApplicationId } from "@/infrastructure/repositories/candidate.repository";
 import { notFound } from "next/navigation";
@@ -26,6 +27,12 @@ export default async function DocumentsPage() {
           {approvedCount} من {total} مستندات معتمدة
         </p>
       </div>
+
+      {candidate.status === "pending" && (
+        <Alert tone="gold" title="اقبل العرض أولاً" className="mb-6">
+          رفع المستندات يبدأ بعد قبولك العرض الوظيفي من صفحة «رحلتي».
+        </Alert>
+      )}
 
       {/* Progress */}
       <div className="bg-white rounded-2xl border p-5 mb-6 shadow-sm"

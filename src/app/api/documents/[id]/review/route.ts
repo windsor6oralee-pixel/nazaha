@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNotifier, templates } from "@/infrastructure/notifications";
+import { getOrgNotifier, templates } from "@/infrastructure/notifications";
+import { getStorage } from "@/infrastructure/storage";
+import { syncApplicationProgress } from "@/infrastructure/applications/lifecycle.service";
 import { requireHR, tenantPrisma, withTenantTransaction, deny } from "@/infrastructure/tenant";
 
 export async function PATCH(
@@ -54,6 +56,13 @@ export async function PATCH(
     );
   }
 
+  if (!["IN_PROGRESS", "UNDER_REVIEW"].includes(document.application.status)) {
+    return NextResponse.json(
+      { error: "لا يمكن مراجعة مستندات طلب في هذه المرحلة" },
+      { status: 409 }
+    );
+  }
+
   const newDocStatus = action === "approve" ? "APPROVED" : "REJECTED";
   const applicationId = document.application.id;
 
@@ -93,47 +102,20 @@ export async function PATCH(
       },
     });
 
-    // Auto-transition application: if all required docs are now APPROVED → UNDER_REVIEW
-    if (action === "approve") {
-      const allDocs = await tx.document.findMany({
-        where: { applicationId },
-        select: { status: true, isRequired: true },
-      });
-
-      const requiredDocs = allDocs.filter((d) => d.isRequired);
-      const allRequiredApproved = requiredDocs.every((d) => d.status === "APPROVED");
-
-      if (
-        allRequiredApproved &&
-        requiredDocs.length > 0 &&
-        document.application.status === "IN_PROGRESS"
-      ) {
-        await tx.application.update({
-          where: { id: applicationId },
-          data: { status: "UNDER_REVIEW" },
-        });
-
-        await tx.auditLog.create({
-          data: {
-            actorType: "USER",
-            userId: ctx.userId,
-            action: "application.documents_complete",
-            resource: "Application",
-            resourceId: applicationId,
-            applicationId,
-            candidateId: document.application.candidateId,
-            metadata: { trigger: "all_required_docs_approved" },
-          },
-        });
-      }
-    }
+    // Steps and application status follow the documents (IN_PROGRESS ↔ UNDER_REVIEW).
+    await syncApplicationProgress(tx, applicationId, { kind: "USER", userId: ctx.userId });
 
     return [updated];
   });
 
+  // A rejected upload is gone from the record; drop its bytes too.
+  if (action === "reject" && document.filePath) {
+    await getStorage().delete(document.filePath).catch(() => null);
+  }
+
   // ── 5. Send notification (fire-and-forget — never block the response) ──
   const candidate = document.application.candidate;
-  const notifier = getNotifier();
+  const notifier = await getOrgNotifier(ctx.organizationId);
 
   if (action === "approve") {
     // Check if this was the last required doc (re-query after transaction)

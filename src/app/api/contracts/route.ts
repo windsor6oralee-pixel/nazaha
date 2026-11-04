@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ContractType } from "@prisma/client";
-import { getNotifier } from "@/infrastructure/notifications";
+import { getOrgNotifier } from "@/infrastructure/notifications";
 import { requireHR, tenantPrisma, deny } from "@/infrastructure/tenant";
 import { renderContractForCandidate } from "@/infrastructure/contracts/contract-template.service";
+import { escapeHtml } from "@/infrastructure/contracts/template-renderer";
+import { refreshApplicationProgress } from "@/infrastructure/applications/lifecycle.service";
 
 const CONTRACT_TYPES = new Set<ContractType>([
   "EMPLOYMENT_CONTRACT", "CONFIDENTIALITY_AGREEMENT", "IT_POLICY_ACKNOWLEDGEMENT", "CONFLICT_OF_INTEREST", "CUSTOM",
@@ -36,6 +38,10 @@ export async function POST(request: NextRequest) {
     },
   });
   if (!app) return deny(404, "الطلب غير موجود");
+  // العقد يُصدر بعد اعتماد الملف، ولا يُصدر لطلب منتهٍ.
+  if (app.status !== "APPROVED") {
+    return NextResponse.json({ error: "يُصدر العقد بعد اعتماد ملف المرشح" }, { status: 409 });
+  }
 
   const existing = await db.contract.findFirst({
     where: { applicationId, type: contractType, status: { in: ["PENDING_SIGNATURE", "FULLY_SIGNED"] } },
@@ -83,11 +89,13 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  getNotifier().send({
+  await refreshApplicationProgress(ctx.organizationId, applicationId, { kind: "USER", userId: ctx.userId });
+
+  getOrgNotifier(ctx.organizationId).then((notifier) => notifier.send({
     to: app.candidate.email,
     subject: `📋 عقدك جاهز للتوقيع — ${app.candidate.jobTitle}`,
-    html: contractReadyEmail(app.candidate.nameAr, app.candidate.jobTitle, app.organization.nameAr),
-  }).catch(() => null);
+    html: contractReadyEmail(escapeHtml(app.candidate.nameAr), escapeHtml(app.candidate.jobTitle), escapeHtml(app.organization.nameAr)),
+  })).catch(() => null);
 
   return NextResponse.json({ ok: true, contract }, { status: 201 });
 }

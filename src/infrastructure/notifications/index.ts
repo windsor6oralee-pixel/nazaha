@@ -31,9 +31,26 @@ export function getNotifier(): NotificationProvider {
  * Falls back to ConsoleAdapter when SMTP is not configured for this org.
  */
 export async function getOrgNotifier(organizationId: string): Promise<NotificationProvider> {
+  // Prefer the mailbox pool when the org has provisioned ≥2 InboxKit mailboxes
+  // — rotation across them turns one Gmail quota into N and spreads reputation.
+  // The platform-admin sending policy narrows the pool to the domains this
+  // tenant is allowed to send through.
+  const { getMailboxPool } = await import("./mailbox-pool-config.service");
+  const pool = await getMailboxPool(organizationId);
+  if (pool && pool.length) {
+    const { getSendingPolicy, filterPoolByPolicy } = await import("./sending-policy.service");
+    const policy = await getSendingPolicy(organizationId);
+    // Hand the full policy-filtered pool to the adapter — the adapter itself
+    // enforces per-mailbox daily caps using the live counter.
+    const filtered = filterPoolByPolicy(pool, policy);
+    if (filtered.length) {
+      const { MailboxPoolAdapter } = await import("./mailbox-pool.adapter");
+      return new MailboxPoolAdapter(filtered, organizationId, policy);
+    }
+  }
+
   const { getSmtpConfig } = await import("./smtp-config.service");
   const config = await getSmtpConfig(organizationId);
-
   if (!config) return new ConsoleAdapter();
 
   const { SmtpAdapter } = await import("./smtp.adapter");
