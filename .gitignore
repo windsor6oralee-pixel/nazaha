@@ -38,6 +38,14 @@ yarn-error.log*
 # local test-credentials reference — must never be committed
 TEST_ACCOUNTS.md
 
+# accepted-candidate credential sheet — passwords and the decryption key
+accepted.csv
+accepted.csv.enc
+accepted.csv.original
+accepted-name-review.csv
+accepted-cleanup-log.txt
+.accepted-passphrase
+
 # playwright
 /.playwright/
 /test-results/
