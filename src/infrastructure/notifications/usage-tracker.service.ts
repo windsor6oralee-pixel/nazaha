@@ -6,7 +6,7 @@
  * needed. Increments use the `(organizationId, mailboxEmail, date)` unique
  * index so concurrent sends from parallel adapters can't lose counts.
  */
-import { prisma } from "@/infrastructure/database/client";
+import { prisma } from "../database/client";
 
 export interface MailboxUsage {
   mailboxEmail: string;

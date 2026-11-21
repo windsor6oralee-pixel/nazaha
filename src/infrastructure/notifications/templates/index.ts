@@ -1,4 +1,4 @@
-import { escapeHtml as e } from "@/infrastructure/contracts/template-renderer";
+import { escapeHtml as e } from "../../contracts/template-renderer";
 
 const APP_NAME = "نزاهة التوظيف";
 const BRAND_COLOR = "#013A2B";

@@ -2,6 +2,8 @@ export interface EmailMessage {
   to: string;
   subject: string;
   html: string;
+  /** Optional plain-text variant — improves deliverability (multipart/alternative). */
+  text?: string;
 }
 
 export interface NotificationProvider {

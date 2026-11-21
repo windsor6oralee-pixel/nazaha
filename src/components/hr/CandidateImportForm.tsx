@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
+import Link from "next/link";
 import {
   Upload, FileText, CheckCircle, XCircle, Loader2,
   Download, AlertTriangle, ChevronDown, ChevronUp
 } from "lucide-react";
+import { parseCsvRecords } from "@/lib/csv";
 
 interface ParsedRow {
   row: number;
   name: string;
   email: string;
+  password: string;
   nationalId?: string;
   jobTitle?: string;
   department?: string;
@@ -32,22 +35,22 @@ interface ImportResponse {
 }
 
 function parseCSV(text: string): ParsedRow[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^"|"$/g, ""));
-  return lines.slice(1).map((line, i) => {
-    const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
-    const obj: Record<string, string> = {};
-    headers.forEach((h, j) => { obj[h] = vals[j] ?? ""; });
+  return parseCsvRecords(text).map((obj, i) => {
+    const email = obj["email"] || obj["البريد"] || obj["بريد"] || "";
+    const password = obj["password"] || obj["كلمة المرور"] || obj["كلمة سر"] || obj["كلمةالسر"] || "";
+    let _error: string | undefined;
+    if (!email) _error = "لا يوجد بريد إلكتروني";
+    else if (!password) _error = "كلمة المرور مطلوبة";
     return {
       row: i + 2,
       name:           obj["name"] || obj["الاسم"] || obj["اسم"] || "",
-      email:          obj["email"] || obj["البريد"] || obj["بريد"] || "",
+      email,
+      password,
       nationalId:     obj["nationalid"] || obj["national_id"] || obj["رقم الهوية"] || obj["هوية"] || undefined,
       jobTitle:       obj["jobtitle"] || obj["job_title"] || obj["المسمى الوظيفي"] || obj["وظيفة"] || undefined,
       department:     obj["department"] || obj["القسم"] || obj["قسم"] || undefined,
       acceptanceDate: obj["acceptancedate"] || obj["acceptance_date"] || obj["تاريخ القبول"] || undefined,
-      _error: (!obj["email"] && !obj["البريد"] && !obj["بريد"]) ? "لا يوجد بريد إلكتروني" : undefined,
+      _error,
     };
   }).filter(r => r.name || r.email);
 }
@@ -87,7 +90,7 @@ export function CandidateImportForm() {
   }
 
   function downloadTemplate() {
-    const csv = "name,email,jobTitle,department,acceptanceDate\nمحمد العمري,m.omari@example.com,محلل مالي,المالية,2026-01-01\n";
+    const csv = "name,email,password,jobTitle,department,acceptanceDate\nمحمد العمري,m.omari@example.com,Sirr123456,محلل مالي,المالية,2026-01-01\n";
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -129,8 +132,6 @@ export function CandidateImportForm() {
   const invalidRows = rows.filter(r => r._error);
   const errorResults = response?.results.filter(r => r.status === "error") ?? [];
 
-  const inputStyle = { borderColor: "var(--color-border)", background: "var(--color-surface)", color: "var(--color-text)" };
-
   return (
     <div className="space-y-6">
 
@@ -139,7 +140,7 @@ export function CandidateImportForm() {
         <div>
           <p className="text-sm font-semibold" style={{ color: "var(--color-dark)" }}>قالب CSV جاهز للتحميل</p>
           <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-            أعمدة مطلوبة: <span dir="ltr">name, email</span> — بدون رقم هوية
+            أعمدة مطلوبة: <span dir="ltr">name, email, password</span> — كلمة المرور تصبح جاهزة للدخول فوراً
           </p>
         </div>
         <button
@@ -224,7 +225,7 @@ export function CandidateImportForm() {
       {isPending && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs" style={{ color: "var(--color-text-muted)" }}>
-            <span className="flex items-center gap-1"><Loader2 className="w-3.5 h-3.5 animate-spin" /> جارٍ الاستيراد وإرسال الدعوات...</span>
+            <span className="flex items-center gap-1"><Loader2 className="w-3.5 h-3.5 animate-spin" /> جارٍ الاستيراد وإنشاء الحسابات وتفعيلها...</span>
             <span>{progress}%</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--color-border)" }}>
@@ -239,11 +240,11 @@ export function CandidateImportForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl border text-center" style={{ borderColor: "rgba(34,122,78,0.3)", background: "var(--color-success-bg)" }}>
               <p className="text-3xl font-bold" style={{ color: "var(--color-success)" }}>{response.succeeded}</p>
-              <p className="text-xs mt-1" style={{ color: "var(--color-success)" }}>تم استيرادهم بدون إرسال دعوات</p>
-              <a href="/hr/directives/bulk?mode=invitation" className="inline-block mt-2 text-xs font-semibold underline"
+              <p className="text-xs mt-1" style={{ color: "var(--color-success)" }}>حساباتهم جاهزة للدخول — بلا دعوات</p>
+              <Link href="/hr/candidates" className="inline-block mt-2 text-xs font-semibold underline"
                  style={{ color: "var(--color-primary)" }}>
-                اذهب لإرسال الدعوات ←
-              </a>
+                اذهب لقائمة المرشحين ←
+              </Link>
             </div>
             <div className="p-4 rounded-xl border text-center" style={{ borderColor: "rgba(168,58,48,0.3)", background: "var(--color-error-bg)" }}>
               <p className="text-3xl font-bold" style={{ color: "var(--color-error)" }}>{response.failed}</p>
@@ -300,7 +301,7 @@ export function CandidateImportForm() {
         >
           {isPending
             ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الاستيراد...</>
-            : <><Upload className="w-4 h-4" /> استيراد {validRows.length} مرشح وإرسال الدعوات</>}
+            : <><Upload className="w-4 h-4" /> استيراد {validRows.length} مرشح وإنشاء حساباتهم</>}
         </button>
       )}
     </div>

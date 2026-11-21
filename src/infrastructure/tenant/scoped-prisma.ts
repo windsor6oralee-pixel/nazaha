@@ -101,6 +101,16 @@ export function tenantPrisma(organizationId: string) {
       role:                     direct(organizationId),
       candidateAlert:           direct(organizationId),
 
+      // Import-batch phase (additive): both carry organizationId directly.
+      importBatch:              direct(organizationId),
+      importItem:               direct(organizationId),
+
+      // Pre-existing gaps closed so every organizationId model is tenant-scoped.
+      emailLog:                 direct(organizationId),
+      emailTemplate:            direct(organizationId),
+      mailboxDailyUsage:        direct(organizationId),
+      hRDirectiveTemplate:      direct(organizationId),
+
       candidateFieldValue:  rel(viaCandidate),
       document:             rel(viaApp),
       onboardingProcess:    rel(viaApp),

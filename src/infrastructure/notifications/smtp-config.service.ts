@@ -2,8 +2,8 @@
  * Reads SMTP configuration from SystemSetting (per-organization) and
  * decrypts the stored password. Returns null if not configured.
  */
-import { prisma } from "@/infrastructure/database/client";
-import { decrypt } from "@/lib/crypto";
+import { prisma } from "../database/client";
+import { decrypt } from "../../lib/crypto";
 
 export interface SmtpSettings {
   host: string;

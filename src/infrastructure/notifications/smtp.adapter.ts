@@ -38,6 +38,7 @@ export class SmtpAdapter implements NotificationProvider {
       to: message.to,
       subject: message.subject,
       html: message.html,
+      text: message.text,
     });
   }
 }

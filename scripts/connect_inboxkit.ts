@@ -82,9 +82,24 @@ async function listMailboxes(apiKey: string, workspaceId: string) {
   });
   if (!res.ok) throw new Error(`mailboxes/list ${res.status}`);
   const data = await res.json();
-  return (data.mailboxes ?? []) as Array<{
-    uid: string; username: string; domain_name: string;
+  // InboxKit emits both "AZURE" and "MICROSOFT" labels for O365 mailboxes — treat
+  // them identically (smtp.office365.com). Must NOT default to Gmail blindly.
+  const rows = (data.mailboxes ?? []) as Array<{
+    uid: string; username: string; domain_name: string; platform?: string;
   }>;
+  return rows.map((m) => ({ ...m, platform: m.platform ?? 'GOOGLE' }));
+}
+
+async function smtpConfigFor(platform: string): Promise<{ host: string; port: number; secure: boolean }> {
+  if (platform === 'MICROSOFT' || platform === 'AZURE') {
+    // Azure / Microsoft 365 — STARTTLS on 587 (same as the pool connector).
+    return { host: 'smtp.office365.com', port: 587, secure: false };
+  }
+  if (platform === 'GOOGLE') {
+    return { host: 'smtp.gmail.com', port: 587, secure: false };
+  }
+  console.warn(`[connect] unknown platform "${platform}" — defaulting to O365`);
+  return { host: 'smtp.office365.com', port: 587, secure: false };
 }
 
 async function getCredentials(apiKey: string, workspaceId: string, uid: string) {
@@ -143,10 +158,11 @@ async function main() {
   await upsertSetting(orgId, 'inboxkit_mailbox_uid',   mb.uid);
   await upsertSetting(orgId, 'inboxkit_mailbox_email', resolvedEmail);
 
-  // Write SMTP config (Google Workspace)
-  await upsertSetting(orgId, 'smtp_host',       'smtp.gmail.com');
-  await upsertSetting(orgId, 'smtp_port',       '587');
-  await upsertSetting(orgId, 'smtp_secure',     'false');
+  const smtp = await smtpConfigFor(mb.platform);
+  // Write SMTP config routed by the mailbox's real platform.
+  await upsertSetting(orgId, 'smtp_host',       smtp.host);
+  await upsertSetting(orgId, 'smtp_port',       String(smtp.port));
+  await upsertSetting(orgId, 'smtp_secure',     String(smtp.secure));
   await upsertSetting(orgId, 'smtp_user',       resolvedEmail);
   await upsertSetting(orgId, 'smtp_pass_enc',   encrypt(appPassword));
   await upsertSetting(orgId, 'smtp_from_email', resolvedEmail);

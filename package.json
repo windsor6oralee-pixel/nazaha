@@ -15,7 +15,8 @@
     "e2e": "playwright test",
     "e2e:roles": "playwright test e2e/roles.spec.ts",
     "candidate:password": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/set_candidate_password.ts",
-    "candidate:setup": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/setup_accepted_candidates_auth.ts",
+    "candidates:import": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/import_accepted_candidates.ts",
+    "candidates:send": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/batch_send_invitations.ts",
     "unlock:accounts": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true,\"skipLibCheck\":true}' scripts/unlock_accounts.ts",
     "check:deps": "node scripts/ci/check-deps.mjs",
     "ci": "bash scripts/ci/test.sh"

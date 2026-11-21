@@ -14,6 +14,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { candidateCredentials } from "@/infrastructure/notifications/templates/credentials";
 import { generateCandidatePassword } from "@/lib/password-gen";
 
+// The delivery-hardening step re-reads the candidate and verifies the sent
+// password against the stored bcrypt hash — stub that comparison as successful.
+vi.mock("bcryptjs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("bcryptjs")>();
+  return { ...actual, compare: vi.fn(async () => true) };
+});
+
 const mocks = vi.hoisted(() => {
   const candidate = {
     id: "cand_1",
@@ -104,11 +111,15 @@ describe("candidateCredentials template", () => {
       password: "P@ssw0rd!2z",
       loginUrl: "https://nazaha.example",
     });
-    expect(subject).toContain("اسم");
-    expect(subject).toContain("جهة");
+    expect(subject).toContain("دعوة لاستكمال إجراءات التوظيف");
+    expect(subject).toContain("منصة نزاهة");
     // Both strings must appear verbatim in the HTML.
     expect(html).toContain("user@example.com");
     expect(html).toContain("P@ssw0rd!2z");
+    // Institutional identity hierarchy must be reflected in the design.
+    expect(html).toContain("منصة القبول والنزاهة");
+    expect(html).toContain("منصة نزاهة للتوظيف");
+    expect(html).toContain("جهة");
     // user-select:all makes a single click/tap grab the whole string in mail clients.
     expect(html).toMatch(/user-select:\s*all/);
     // Points at the login page, not the setup/token page.
@@ -120,6 +131,13 @@ describe("candidateCredentials template", () => {
 describe("sendInvitation() — credentials provisioning", () => {
   it("provisions the account and flips invitationSent when transport delivers", async () => {
     mocks.notifier.isTransport = true;
+    // findUnique sequence inside sendInvitation:
+    //   first  → loginEmail clash check  → none
+    //   second → passwordHash re-read      → stored hash
+    // bcrypt `compare` is stubbed (vi.mock above) to succeed, so the hardening
+    // step sees a hash that matches the generated password.
+    mocks.prisma.candidate.findUnique.mockReset();
+    mocks.prisma.candidate.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ passwordHash: "stored-bcrypt-hash" });
     const res = await sendInvitation("cand_1");
 
     expect(mocks.notifier.send).toHaveBeenCalledOnce();

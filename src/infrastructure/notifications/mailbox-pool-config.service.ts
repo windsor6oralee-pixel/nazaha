@@ -3,8 +3,8 @@
  * Stored as ONE encrypted JSON blob in SystemSetting (key: inboxkit_mailboxes_enc)
  * — simpler than N rows, atomic to update, and keeps credentials off any index.
  */
-import { prisma } from "@/infrastructure/database/client";
-import { encrypt, decrypt } from "@/lib/crypto";
+import { prisma } from "../database/client";
+import { encrypt, decrypt } from "../../lib/crypto";
 import type { PoolMailbox } from "./mailbox-pool.adapter";
 
 const KEY = "inboxkit_mailboxes_enc";

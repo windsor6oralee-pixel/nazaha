@@ -51,7 +51,8 @@ async function discoverWorkspace(apiKey: string, want: string): Promise<string> 
   throw new Error(`workspace "${want}" not found — set INBOXKIT_WORKSPACE_ID explicitly`);
 }
 
-type Platform = 'GOOGLE' | 'MICROSOFT';
+// InboxKit emits both "AZURE" and "MICROSOFT" labels for O365 mailboxes.
+type Platform = 'GOOGLE' | 'MICROSOFT' | 'AZURE' | string;
 interface Mailbox { uid: string; username: string; domain_name: string; platform: Platform }
 
 async function listMailboxes(apiKey: string, workspaceId: string): Promise<Mailbox[]> {
@@ -71,9 +72,17 @@ async function listMailboxes(apiKey: string, workspaceId: string): Promise<Mailb
   return all;
 }
 function smtpConfigFor(platform: Platform): { host: string; port: number; secure: boolean } {
-  return platform === 'MICROSOFT'
-    ? { host: 'smtp.office365.com', port: 587, secure: false }
-    : { host: 'smtp.gmail.com',     port: 587, secure: false };
+  // AZURE == MICROSOFT on InboxKit's side — both are O365 and must route to
+  // smtp.office365.com. Routing them to Gmail was the root cause of the
+  // 535/534 rejections on ~84% of the pool.
+  if (platform === 'MICROSOFT' || platform === 'AZURE') {
+    return { host: 'smtp.office365.com', port: 587, secure: false };
+  }
+  if (platform === 'GOOGLE') {
+    return { host: 'smtp.gmail.com', port: 587, secure: false };
+  }
+  console.warn(`[pool] unknown platform "${platform}" — defaulting to O365`);
+  return { host: 'smtp.office365.com', port: 587, secure: false };
 }
 async function getCredentials(apiKey: string, workspaceId: string, uid: string): Promise<string> {
   const url = new URL(`${BASE}/api/mailboxes/show-credentials`);

@@ -83,6 +83,7 @@ export class MailboxPoolAdapter implements NotificationProvider {
           to:      message.to,
           subject: message.subject,
           html:    message.html,
+          text:    message.text,
         });
         if (this.orgId) await recordSend(this.orgId, mb.fromEmail);
         return;

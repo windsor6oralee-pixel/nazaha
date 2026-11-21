@@ -88,6 +88,7 @@ model Organization {
   roles             Role[]
   candidates        Candidate[]
   applications      Application[]
+  importBatches    ImportBatch[]
   workflows         Workflow[]
   settings          SystemSetting[]
   contractTemplates ContractTemplate[]
@@ -294,9 +295,128 @@ model Candidate {
   invitationSent   Boolean   @default(false)
   invitationSentAt DateTime?
 
+  // ADDITIVE (ImportBatch phase): import items resolved to this candidate.
+  importItems     ImportItem[]
+
   // One national ID per org (person can exist in multiple orgs)
   @@unique([organizationId, nationalId])
   @@map("candidates")
+}
+
+// ============================================================
+// IMPORT BATCH — candidate acceptance import / invitation batch (ADDITIVE)
+// One batch = one uploaded accepted-candidates list (+ its derived items).
+// Immutable outcome summary per batch; items carry per-row state.
+// ============================================================
+
+enum ImportBatchStatus {
+  PENDING      // uploaded — rows stored, nothing validated yet
+  VALIDATING   // validation pass running
+  READY        // validated + preview shown — awaiting approval
+  APPROVED     // approved by an authorised user, not yet executing
+  EXECUTING    // import running (claim/lease on items)
+  COMPLETED    // every item terminal, all succeeded
+  PARTIAL      // terminal, but some items failed/skipped
+  FAILED       // terminal, execution aborted
+  CANCELLED    // operator cancelled before execution
+  ARCHIVED     // frozen — no further transitions
+}
+
+model ImportBatch {
+  id               String            @id @default(cuid())
+  organizationId   String
+  reference        String            @unique
+  status           ImportBatchStatus @default(PENDING)
+  sourceFileName  String?
+  totalRows        Int               @default(0)
+  validRows        Int               @default(0)
+  importedCount    Int               @default(0)
+  failedCount      Int               @default(0)
+
+  // Lifecycle actors/times — who created, who approved, when execution ran.
+  createdByUserId   String?
+  approvedByUserId String?
+  approvedAt        DateTime?
+  executedAt        DateTime?
+
+  // Frozen final outcome (set ONCE when the batch reaches a terminal status).
+  // Never recomputed from live Candidate/Application state — historical result
+  // stays stable even if the candidate changes later.
+  resultSummary     Json?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  finishedAt       DateTime?
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  items            ImportItem[]
+  emailLogs        EmailLog[]
+
+  @@index([organizationId, status])
+  @@map("import_batches")
+}
+
+enum ImportItemStatus {
+  PENDING            // row parsed, not yet validated
+  VALID              // passed validation, not yet matched
+  INVALID            // failed validation (bad email / missing name / …)
+  DUPLICATE          // duplicate inside the same batch (itemKey or row content)
+  MATCHED_NEW        // matched no existing candidate → will be created
+  MATCHED_EXISTING   // matched an existing candidate by nationalId → will be linked
+  CONFLICT           // ambiguous match → human review required, never auto-run
+  READY              // approved & queued for execution
+  EXECUTING          // claimed by a worker (lease active)
+  DONE               // terminal success
+  FAILED             // terminal failure (errorMessage set)
+  SKIPPED            // terminal — deliberately not executed
+}
+
+model ImportItem {
+  id               String            @id @default(cuid())
+  batchId          String
+  organizationId   String
+  itemKey          String            // unique within batch
+  nationalId       String?
+  email            String?
+  nameAr           String
+  jobTitle         String?
+  department       String?
+  acceptanceDate  DateTime?
+
+  // ── بيانات الدخول الرسمية (قائمة المقبولين) ─────────────────────────────
+  // كلمة مرور الشيت مشفّرة (AES-256-GCM — نفس نمط tokenCiphertext) ولا
+  // تُخزَّن نصاً صريحاً أبداً. تُفكّ عند تنفيذ الدفعة فقط لتُضبط ككلمة دخول
+  // المرشح ثم تُمحى من العنصر — ولا تظهر في أي استجابة للواجهة.
+  passwordCiphertext String?
+
+  candidateId      String?
+  applicationId    String?
+  status           ImportItemStatus @default(PENDING)
+  errorMessage     String?
+
+  // Which rule decided the match: "nationalId" | "email" | "none" — lets the
+  // preview/report show WHY a row was linked, and lets humans audit conflicts.
+  matchedBy        String?
+
+  // Claim/lease — prevents two workers from executing the same item at once.
+  // A worker must CAS status→EXECUTING with a fresh lease; an expired lease
+  // (crashed worker) can be reclaimed by re-claiming before leaseExpiresAt.
+  claimToken       String?
+  claimedAt        DateTime?
+  leaseExpiresAt   DateTime?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  batch            ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  candidate        Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  application      Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  emailLogs        EmailLog[]
+
+  @@unique([batchId, itemKey])
+  @@index([batchId, status])
+  @@index([claimToken])
+  @@map("import_items")
 }
 
 // ============================================================
@@ -342,6 +462,9 @@ model Application {
 
   candidateId String
   candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  // ADDITIVE (ImportBatch phase): import items resolved to this application.
+  importItems ImportItem[]
 
   // Denormalized for query efficiency (avoids JOIN to candidate)
   organizationId String
@@ -1090,6 +1213,24 @@ model EmailLog {
   organizationId  String
   candidateId     String?
   applicationId   String?
+  // ADDITIVE (ImportBatch phase): logical batch + originating import item for this send attempt.
+  // Historical rows keep null — never backfilled/rewritten.
+  batchId         String?
+  importItemId    String?
+
+  // ADDITIVE: stable idempotency key for the LOGICAL operation + attempt number,
+  // e.g. "invite:<importItemId>:1". Unique index ⇒ a double-insert of the same
+  // attempt (worker retry, crash-replay) is rejected by the database itself.
+  // Historical rows keep null — Postgres unique indexes allow many NULLs.
+  idempotencyKey  String?       @unique
+
+  // ADDITIVE: set immediately BEFORE handing the message to the transport.
+  //   null  ⇒ the send was never attempted (provably not sent → safe to retry)
+  //   set   ⇒ attempted, but the outcome may be unrecorded (crash window) → UNKNOWN
+  // This is what lets resume distinguish "not sent" from "sent but not recorded"
+  // WITHOUT assuming anything. SMTP itself offers no way to query a message back.
+  sendStartedAt   DateTime?
+
   sentByUserId    String?
   fromAddress     String
   toAddress       String
@@ -1114,8 +1255,14 @@ model EmailLog {
 
   organization    Organization   @relation(fields: [organizationId], references: [id])
 
+  // ADDITIVE: linkage to the import batch/item this attempt belongs to.
+  // SetNull keeps every historical e-mail row intact if a batch is ever removed.
+  batch           ImportBatch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  importItem      ImportItem?    @relation(fields: [importItemId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, createdAt])
   @@index([candidateId])
   @@index([providerMessageId])
+  @@index([importItemId])
   @@map("email_logs")
 }

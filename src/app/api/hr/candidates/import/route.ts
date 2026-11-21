@@ -1,15 +1,25 @@
 /**
  * POST /api/hr/candidates/import
- * Bulk-imports candidates from a JSON array.
- * Each row: { name, email, nationalId?, jobTitle?, department?, acceptanceDate? }
+ * Bulk-imports candidates from the OFFICIAL accepted-candidates sheet (JSON rows).
+ * Each row: { name, email, password, nationalId?, jobTitle?, department?, acceptanceDate? }
+ *
+ * القائمة هي المصدر الرسمي: كل صف يمنح المرشح حساب دخول دائم —
+ * loginEmail = البريد، كلمة المرور كما هي في الشيت، وتفعيل فوري — بلا رمز
+ * دعوة وبلا إرسال أي بريد. صف موجود بنفس البريد يُحدَّث حسابه لا يُكرَّر.
+ *
  * Returns per-row results so the UI can show success/failure breakdown.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireHR } from "@/infrastructure/tenant";
 import { createCandidate } from "@/infrastructure/services/candidate.service";
+import {
+  applySheetCredentials,
+  ensureImportApplication,
+  findAcceptedCandidate,
+} from "@/infrastructure/services/candidate-provisioning.service";
 import { randomBytes } from "crypto";
 
-// Bulk imports create + optionally email dozens of candidates per chunk.
+// Bulk imports create + activate dozens of candidates per chunk.
 // Give the serverless function enough headroom.
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -17,6 +27,7 @@ export const runtime = "nodejs";
 interface ImportRow {
   name: string;
   email: string;
+  password: string;
   nationalId?: string;
   jobTitle?: string;
   department?: string;
@@ -52,6 +63,7 @@ export async function POST(req: NextRequest) {
 
   const today = new Date().toISOString().slice(0, 10);
   const results: RowResult[] = [];
+  const auditCtx = { userId: ctx.userId, source: "direct_import" as const };
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -65,18 +77,31 @@ export async function POST(req: NextRequest) {
       results.push({ row: rowNum, name: "", email: row.email, status: "error", error: "الاسم مطلوب" });
       continue;
     }
+    if (!row.password) {
+      results.push({ row: rowNum, name: row.name, email: row.email, status: "error", error: "كلمة المرور مطلوبة" });
+      continue;
+    }
 
+    const email = row.email.trim().toLowerCase();
     try {
-      await createCandidate({
-        nameAr:         row.name.trim(),
-        nationalId:     uniqueId(),
-        email:          row.email.trim().toLowerCase(),
-        jobTitle:       row.jobTitle?.trim() || "موظف",
-        department:     row.department?.trim() || "عام",
-        acceptanceDate: new Date(row.acceptanceDate || today),
-        organizationId: ctx.organizationId,
-        createdByUserId: ctx.userId,
-      });
+      const existing = await findAcceptedCandidate(ctx.organizationId, email);
+      if (existing) {
+        // القائمة هي المصدر الرسمي: الحساب القائم يُجدَّث ببيانات الشيت.
+        await ensureImportApplication(existing.id, ctx.organizationId, auditCtx);
+        await applySheetCredentials(existing.id, email, row.password, auditCtx);
+      } else {
+        const created = await createCandidate({
+          nameAr:         row.name.trim(),
+          nationalId:     uniqueId(),
+          email,
+          jobTitle:       row.jobTitle?.trim() || "موظف",
+          department:     row.department?.trim() || "عام",
+          acceptanceDate: new Date(row.acceptanceDate || today),
+          organizationId: ctx.organizationId,
+          createdByUserId: ctx.userId,
+        });
+        await applySheetCredentials(created.candidateId, email, row.password, auditCtx);
+      }
       results.push({ row: rowNum, name: row.name, email: row.email, status: "success" });
     } catch (err) {
       results.push({

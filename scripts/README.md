@@ -60,31 +60,41 @@ NEON_DATABASE_URL='postgresql://…' \
 
 ---
 
-## `setup_accepted_candidates_auth.ts`
+## `import_accepted_candidates.ts` — القائمة الرسمية
 
-يجهّز حسابات دخول **للمرشحين المقبولين** دفعةً واحدة: بريد دخول مميّز وكلمة
-مرور مشفّرة، مع تصفير عدّاد المحاولات الفاشلة ورفع أي حظر.
+سكربت الاستيراد الرسمي لقائمة **المقبولين للتوظيف**: كل صف في الملف يحمل
+البريد الإلكتروني وكلمة المرور (واسم المرشح)، فيُنشأ المرشح بطلب موافق
+(+ تهيئة خطواته ووثائقه) ثم يُضبط حساب دخوله **وفوراً**:
 
-كل مرشح مقبول (طلب بحالة `PENDING` / `IN_PROGRESS` / `UNDER_REVIEW` / `APPROVED`)
-يحصل على حساب دخول دائم. المرشحون الذين لا يصلح بريد دخول لهم — لأن بريد
-التواصل مستخدم في حساب آخر — يُتخطّون ويُبلَّغ عنهم في المخرجات.
+- `loginEmail` = بريد الشيت · `passwordHash` = bcrypt لكلمة الشيت **كما هي**
+  (بلا فحص سياسة قوة) · `accountActivatedAt` = الآن — تفعيل فوري.
+- صف موجود بنفس البريد: يُحدَّث حسابه (تدوير كلمة المرور) ولا يُكرَّر.
+- **لا يُرسَل أي بريد** — البيانات تُسلَّم من القائمة مباشرة.
+- **لا تُطبع أي كلمة مرور** في المخرجات — عدّادات فقط.
+
+المعاينة هي الافتراضي، والتنفيذ الفعلي يتطلب `--dry-run=false` صراحةً
+(وموافقة `ALLOW_PRODUCTION_BOOTSTRAP=1` على قاعدة إنتاجية).
 
 ```bash
-# بتمرير كلمة مرور واحدة لكل الحسابات
-SETUP_PASSWORD='<your password>' npm run candidate:setup
+# معاينة (الافتراضي) — لا كتابة
+npm run candidates:import -- --file /path/to/accepted.csv
 
-# بلا كلمة مرور: تُولَّد كلمة مرور عشوائية لكل مرشح وتُطبع مرة واحدة
-npm run candidate:setup
+# تنفيذ فعلي على قاعدة محلية
+npm run candidates:import -- --file /path/to/accepted.csv --dry-run=false
 
-# بلا كتابة — معاينة فقط
-npm run candidate:setup -- --dry-run
+# على قاعدة مستضافة/إنتاجية
+ALLOW_PRODUCTION_BOOTSTRAP=1 \
+  npm run candidates:import -- --file /path/to/accepted.csv --org mof --dry-run=false
 ```
+
+أعمدة الملف (بترتيب أيّ — أسماء عربية مقبولة): `email` · `password` · `name`
+(اختيارية: `nationalid` و`jobtitle` و`department` و`acceptancedate`).
 
 | المتغيّر | مطلوب؟ | الافتراضي |
 |---|---|---|
-| `SETUP_PASSWORD` | لا | كلمة مرور عشوائية لكل مرشح، تُطبع مرة واحدة |
-| `ALLOW_PRODUCTION_BOOTSTRAP` | لقاعدة مستضافة | — |
-| `BOOTSTRAP_DATABASE_URL` | لا | `NEON_DATABASE_URL` |
+| `--file` | لا | `../scripts/accepted.csv` |
+| `--org` | لا | `mof` |
+| `ALLOW_PRODUCTION_BOOTSTRAP` | لقاعدة إنتاجية | — |
 
 ---
 

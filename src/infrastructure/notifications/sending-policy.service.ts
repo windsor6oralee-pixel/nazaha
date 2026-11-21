@@ -6,7 +6,7 @@
  * admins own the policy — org admins see it read-only. If no policy exists,
  * the system defaults to using every mailbox in the org's pool (back-compat).
  */
-import { prisma } from "@/infrastructure/database/client";
+import { prisma } from "../database/client";
 
 const KEY = "sending_policy";
 

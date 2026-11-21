@@ -33,7 +33,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const { dryRun, batchSize, delayMs, orgId } = parseFlags();
-  console.log(`[batch] org=${orgId} batchSize=${batchSize} delayMs=${delayMs} mode=${dryRun ? 'DRY-RUN' : 'LIVE'}`);
+  const loginBase = (process.env.BATCH_LOGIN_URL || "https://www.anticorruptiongov.com").replace(/\/$/, "");
+  console.log(`[batch] org=${orgId} batchSize=${batchSize} delayMs=${delayMs} mode=${dryRun ? 'DRY-RUN' : 'LIVE'} loginUrl=${loginBase}`);
 
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { nameAr: true } });
   if (!org) throw new Error(`org ${orgId} not found`);
@@ -58,7 +59,7 @@ async function main() {
   let ok = 0, fail = 0, exhausted = false;
   for (const c of candidates) {
     try {
-      const result = await sendInvitation(c.id);
+      const result = await sendInvitation(c.id, { loginUrl: loginBase });
       if (result.delivered) ok++;
       else {
         fail++;

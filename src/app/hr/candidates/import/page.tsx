@@ -17,16 +17,16 @@ export default function CandidateImportPage() {
         <p className="text-xs font-medium mb-1" style={{ color: "var(--color-primary)" }}>أدوات الإدارة</p>
         <h1 className="text-2xl font-bold" style={{ color: "var(--color-dark)" }}>استيراد مرشحين دفعةً واحدة</h1>
         <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)", fontFamily: "'IBM Plex Sans Arabic', sans-serif" }}>
-          ارفع ملف CSV يحتوي على أسماء وبريد المقبولين وسيتم إنشاء حساباتهم وإرسال دعوات التسجيل تلقائياً
+          ارفع ملف CSV للمقبولين (الاسم + البريد + كلمة المرور) — يُنشأ لكل منهم حساب دخول مفعّل فوراً بالبيانات التي في الملف
         </p>
       </div>
 
       {/* Info cards */}
       <div className="grid grid-cols-3 gap-3 mb-8">
         {[
-          { num: "1", title: "ارفع ملف CSV", desc: "اسم + بريد إلكتروني كحد أدنى" },
+          { num: "1", title: "ارفع ملف CSV", desc: "اسم + بريد + كلمة مرور" },
           { num: "2", title: "راجع البيانات", desc: "معاينة فورية قبل الإرسال" },
-          { num: "3", title: "إرسال تلقائي", desc: "دعوة لكل مرشح فور الاستيراد" },
+          { num: "3", title: "حسابات جاهزة", desc: "دخول فوري بلا دعوات" },
         ].map(s => (
           <div key={s.num} className="p-4 rounded-2xl border text-center" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-2 text-sm font-bold"

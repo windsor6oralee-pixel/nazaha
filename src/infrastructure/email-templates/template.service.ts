@@ -6,7 +6,7 @@
  * Tenancy: every call takes organizationId first; never trust a client-supplied
  * template id without re-checking it belongs to the caller's org.
  */
-import { prisma } from "@/infrastructure/database/client";
+import { prisma } from "../database/client";
 import type { EmailTemplateKind } from "@prisma/client";
 
 export type { EmailTemplateKind };

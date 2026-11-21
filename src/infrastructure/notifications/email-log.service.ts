@@ -7,7 +7,7 @@
  * effort: we match by recipient address against the org's candidates — unmatched
  * rows are kept so queue health stays visible even when the audience is HR.
  */
-import { prisma } from "@/infrastructure/database/client";
+import { prisma } from "../database/client";
 
 export type EmailStatusCode = "QUEUED" | "SENT" | "FAILED" | "BOUNCED" | "DELIVERED" | "UNKNOWN";
 
@@ -24,6 +24,11 @@ export interface LogEmailInput {
   sentByUserId?: string | null;
   candidateId?: string | null;
   applicationId?: string | null;
+  /** ADDITIVE (ImportBatch phase): batch / item linkage. null for all legacy rows. */
+  batchId?: string | null;
+  importItemId?: string | null;
+  /** ADDITIVE: stable idempotency key for this logical attempt (unique index). */
+  idempotencyKey?: string | null;
 }
 
 function preview(html: string | null | undefined): string | null {
@@ -64,6 +69,9 @@ export async function createPendingLog(input: Omit<LogEmailInput, "status"> & { 
       organizationId:    input.organizationId,
       candidateId,
       applicationId,
+      batchId:           input.batchId ?? null,
+      importItemId:      input.importItemId ?? null,
+      idempotencyKey:    input.idempotencyKey ?? null,
       sentByUserId:      input.sentByUserId ?? null,
       fromAddress:       input.fromAddress,
       toAddress:         input.toAddress.trim().toLowerCase(),
@@ -76,6 +84,19 @@ export async function createPendingLog(input: Omit<LogEmailInput, "status"> & { 
     select: { id: true },
   });
   return row.id;
+}
+
+/**
+ * ADDITIVE: stamps the crash-window marker immediately BEFORE the message is
+ * handed to the transport. Once set, an interrupted run can no longer claim
+ * "the mail was never sent" — the row becomes UNKNOWN until reconciled.
+ * No-op for legacy rows that have no idempotency key.
+ */
+export async function markSendStarted(id: string): Promise<void> {
+  await prisma.emailLog.updateMany({
+    where: { id, sendStartedAt: null },
+    data: { sendStartedAt: new Date() },
+  });
 }
 
 export async function markLogStatus(id: string, status: EmailStatusCode, extra: {

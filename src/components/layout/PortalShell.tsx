@@ -30,6 +30,7 @@ export async function PortalShell({
             items: [
               { href: "/hr", label: "لوحة التحكم", icon: "dashboard", exact: true },
               { href: "/hr/candidates", label: "المرشحون", icon: "candidates" },
+              { href: "/hr/import-batches", label: "دفعة الاستيراد", icon: "upload" },
               { href: "/hr/directives/bulk", label: "إرسال جماعي", icon: "messages" },
               { href: "/hr/emails", label: "سجل البريد", icon: "messages" },
               { href: "/hr/reports", label: "التقارير", icon: "reports" },
